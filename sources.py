@@ -54,7 +54,7 @@ class BufferedRawSource(StreamSource):
     def __init__(self, server, sock, address, content_type, request_parser):
         StreamSource.__init__(self, server, sock, address, content_type, request_parser)
         self.buffer_data = request_parser.body
-        self.burst_packets = collections.deque([self.buffer_data], math.ceil(self.BURST_SIZE / self.TEMP_BUFFER_SIZE))
+        self.burst_packets = collections.deque([self.buffer_data], math.ceil(float(self.BURST_SIZE) / float(self.TEMP_BUFFER_SIZE)))
 
     def publish_packet(self, packet):
         self.buffer_data = self.buffer_data + packet
