@@ -28,7 +28,7 @@ class BufferedRawSource(StreamSource):
 
     def __init__(self, server, sock, address, request_parser):
         StreamSource.__init__(self, server, sock, address, request_parser)
-        self.buffer_data = ''
+        self.buffer_data = request_parser.body
 
     def publish_packet(self, packet):
         self.buffer_data = self.buffer_data + packet
