@@ -4,7 +4,6 @@ import helpers
 import looping
 import collections
 import math
-# import flv
 
 class StreamSource(looping.BaseIOEventHandler):
 
