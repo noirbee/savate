@@ -24,6 +24,7 @@ class IOLoop(object):
     def __init__(self):
         self.poller = select.epoll()
         self.handlers = {}
+        self.injected_events = {}
 
     def register(self, io_event_handler, eventmask):
         if io_event_handler.fileno() not in self.handlers:
@@ -31,6 +32,15 @@ class IOLoop(object):
         else:
             self.poller.modify(io_event_handler.fileno(), eventmask)
         self.handlers[io_event_handler.fileno()] = io_event_handler
+
+    def inject_event(self, fd, eventmask):
+        self.injected_events[fd] = self.injected_events.get(fd, 0) | eventmask
+
+    def _merge_eventlists(self, events_list):
+        while self.injected_events:
+            fd, eventmask = self.injected_events.popitem()
+            events_list[fd] = events_list.get(fd, 0) | eventmask
+        return events_list
 
     def unregister(self, io_event_handler):
         # FIXME: this may need some exception handling
@@ -47,7 +57,7 @@ class IOLoop(object):
                     continue
                 else:
                     raise
-        for fd, eventmask in events_list:
+        for fd, eventmask in self._merge_eventlists(dict(events_list)).items():
             handler = self.handlers[fd]
             try:
                 handler.handle_event(eventmask)

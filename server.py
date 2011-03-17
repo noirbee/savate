@@ -180,7 +180,7 @@ class TCPServer(looping.BaseIOEventHandler):
     def publish_packet(self, source, packet):
         for client in self.sources[source.path][source]['clients'].values():
             client.add_packet(packet)
-            client.flush_if_ready()
+            self.loop.inject_event(client.fileno(), looping.POLLOUT)
 
     def serve_forever(self):
         while True:
