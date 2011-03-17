@@ -171,11 +171,14 @@ class TCPServer(looping.BaseIOEventHandler):
     def remove_source(self, source):
         # FIXME: client shutdown
         for client in self.sources[source.path][source]['clients'].values():
-            self.loop.unregister(client)
-            del self.sources[source.path][source]['clients'][client.fileno()]
             client.close()
         self.loop.unregister(source)
         del self.sources[source.path][source]
+
+    def remove_client(self, client):
+        self.loop.unregister(client)
+        source = client.source
+        del self.sources[source.path][source]['clients'][client.fileno()]
 
     def publish_packet(self, source, packet):
         for client in self.sources[source.path][source]['clients'].values():

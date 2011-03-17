@@ -20,6 +20,10 @@ class StreamClient(HTTPEventHandler):
     def add_packet(self, packet):
         self.output_buffer.add_buffer(packet)
 
+    def close(self):
+        self.server.remove_client(self)
+        HTTPEventHandler.close(self)
+
     def flush_if_ready(self):
         # print 'buffer is ready: %s' % (self.output_buffer.ready)
         if self.output_buffer.ready:
