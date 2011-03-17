@@ -3,6 +3,7 @@
 import helpers
 import looping
 import collections
+import math
 # import flv
 
 class StreamSource(looping.BaseIOEventHandler):
@@ -23,23 +24,35 @@ class StreamSource(looping.BaseIOEventHandler):
 
 class BufferedRawSource(StreamSource):
 
-    # Approximately one packet/s for a 64 kb/s stream
-    PACKET_SIZE = 8192
+    # Incoming maximum buffer size
+    RECV_BUFFER_SIZE = 64 * 2**10
+
+    # Temporary buffer size
+    TEMP_BUFFER_SIZE = 4 * 2**10
+
+    # Size of initial data burst for clients
+    BURST_SIZE = 32 * 2**10
 
     def __init__(self, server, sock, address, request_parser):
         StreamSource.__init__(self, server, sock, address, request_parser)
         self.buffer_data = request_parser.body
+        self.burst_packets = collections.deque([self.buffer_data], math.ceil(self.BURST_SIZE / self.TEMP_BUFFER_SIZE))
 
     def publish_packet(self, packet):
         self.buffer_data = self.buffer_data + packet
-        if len(self.buffer_data) >= self.PACKET_SIZE:
+        if len(self.buffer_data) >= self.TEMP_BUFFER_SIZE:
             StreamSource.publish_packet(self, self.buffer_data)
+            self.burst_packets.append(self.buffer_data)
             self.buffer_data = ''
+
+    def new_client(self, client):
+        for packet in self.burst_packets:
+            client.add_packet(packet)
 
     def handle_event(self, eventmask):
         if eventmask & looping.POLLIN:
             while True:
-                packet = helpers.handle_eagain(self.sock.recv, self.PACKET_SIZE)
+                packet = helpers.handle_eagain(self.sock.recv, self.RECV_BUFFER_SIZE)
                 if packet == None:
                     # EAGAIN
                     break
