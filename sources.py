@@ -15,6 +15,24 @@ class StreamSource(looping.BaseIOEventHandler):
         self.request_parser = request_parser
         self.path = self.request_parser.request_path
 
+    def handle_event(self, eventmask):
+        if eventmask & looping.POLLIN:
+            while True:
+                packet = helpers.handle_eagain(self.sock.recv, self.RECV_BUFFER_SIZE)
+                if packet == None:
+                    # EAGAIN
+                    break
+                elif packet == b'':
+                    # End of stream
+                    print 'End of stream for %s, %s' % (self.sock, self.address)
+                    self.server.remove_source(self)
+                    # FIXME: publish "EOS" packet
+                    break
+                else:
+                    self.publish_packet(packet)
+        else:
+            print 'Unexpected eventmask %s' % (eventmask)
+
     def publish_packet(self, packet):
         self.server.publish_packet(self, packet)
 
@@ -48,24 +66,6 @@ class BufferedRawSource(StreamSource):
     def new_client(self, client):
         for packet in self.burst_packets:
             client.add_packet(packet)
-
-    def handle_event(self, eventmask):
-        if eventmask & looping.POLLIN:
-            while True:
-                packet = helpers.handle_eagain(self.sock.recv, self.RECV_BUFFER_SIZE)
-                if packet == None:
-                    # EAGAIN
-                    break
-                elif packet == b'':
-                    # End of stream
-                    print 'End of stream for %s, %s' % (self.sock, self.address)
-                    self.server.remove_source(self)
-                    # FIXME: publish "EOS" packet
-                    break
-                else:
-                    self.publish_packet(packet)
-        else:
-            print 'Unexpected eventmask %s' % (eventmask)
 
 class FLVSource(StreamSource):
 
