@@ -176,6 +176,7 @@ class TCPServer(looping.BaseIOEventHandler):
         del self.sources[source.path][source]
 
     def remove_client(self, client):
+        self.log('Dropping client %s, %s', client.sock, client.address)
         self.loop.unregister(client)
         source = client.source
         del self.sources[source.path][source]['clients'][client.fileno()]
