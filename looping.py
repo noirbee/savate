@@ -44,8 +44,9 @@ class IOLoop(object):
 
     def unregister(self, io_event_handler):
         # FIXME: this may need some exception handling
-        self.poller.unregister(io_event_handler.fileno())
-        del self.handlers[io_event_handler.fileno()]
+        if io_event_handler.fileno() in self.handlers:
+            self.poller.unregister(io_event_handler.fileno())
+            del self.handlers[io_event_handler.fileno()]
 
     def once(self, timeout = 0):
         while True:
