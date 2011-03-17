@@ -8,10 +8,11 @@ import math
 
 class StreamSource(looping.BaseIOEventHandler):
 
-    def __init__(self, server, sock, address, request_parser):
+    def __init__(self, server, sock, address, content_type, request_parser):
         self.server = server
         self.sock = sock
         self.address = address
+        self.content_type = content_type
         self.request_parser = request_parser
         self.path = self.request_parser.request_path
 
@@ -33,8 +34,8 @@ class BufferedRawSource(StreamSource):
     # Size of initial data burst for clients
     BURST_SIZE = 32 * 2**10
 
-    def __init__(self, server, sock, address, request_parser):
-        StreamSource.__init__(self, server, sock, address, request_parser)
+    def __init__(self, server, sock, address, content_type, request_parser):
+        StreamSource.__init__(self, server, sock, address, content_type, request_parser)
         self.buffer_data = request_parser.body
         self.burst_packets = collections.deque([self.buffer_data], math.ceil(self.BURST_SIZE / self.TEMP_BUFFER_SIZE))
 

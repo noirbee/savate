@@ -71,6 +71,7 @@ class HTTPClient(looping.BaseIOEventHandler):
                 source = sources.sources_mapping[content_type](self.server,
                                                                self.sock,
                                                                self.address,
+                                                               content_type,
                                                                self.request_parser)
                 self.server.sources.setdefault(
                     path,
@@ -106,7 +107,8 @@ class HTTPClient(looping.BaseIOEventHandler):
                                                       source,
                                                       self.sock,
                                                       self.address,
-                                                      self.request_parser)
+                                                      self.request_parser,
+                                                      source.content_type)
                     # FIXME: this call may actually need to instatiate
                     # the client itself (e.g. if the source needs some
                     # dedicated code in its clients)

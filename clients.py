@@ -12,9 +12,10 @@ class StatusClient(HTTPEventHandler):
 
 class StreamClient(HTTPEventHandler):
 
-    def __init__(self, server, source, sock, address, request_parser):
+    def __init__(self, server, source, sock, address, request_parser, content_type):
         HTTPEventHandler.__init__(self, server, sock, address, request_parser,
-                                  200, b'OK', {b'Content-Length': None})
+                                  200, b'OK', {b'Content-Length': None,
+                                               b'Content-Type': content_type})
         self.source = source
 
     def add_packet(self, packet):
