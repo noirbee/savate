@@ -67,18 +67,7 @@ class BufferedRawSource(StreamSource):
         for packet in self.burst_packets:
             client.add_packet(packet)
 
-class FLVSource(StreamSource):
-
-    def __init__(self, sock, server, address, request_parser):
-        StreamSource.__init__(self, sock, server, address, request_parser)
-        self.stream_header = None
-        self.initial_tags = []
-        self.current_output_buffer = None
-
-    # def handle_event(self, eventmask):
-    #     if eventmask & looping.POLLIN:
-    #         if self.stream_header
-
+from flv_source import FLVSource
 
 sources_mapping = {
     b'video/x-flv': FLVSource,
