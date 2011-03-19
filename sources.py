@@ -7,6 +7,9 @@ import math
 
 class StreamSource(looping.BaseIOEventHandler):
 
+    # Incoming maximum buffer size
+    RECV_BUFFER_SIZE = 64 * 2**10
+
     def __init__(self, server, sock, address, content_type, request_parser):
         self.server = server
         self.sock = sock
@@ -41,9 +44,6 @@ class StreamSource(looping.BaseIOEventHandler):
         pass
 
 class BufferedRawSource(StreamSource):
-
-    # Incoming maximum buffer size
-    RECV_BUFFER_SIZE = 64 * 2**10
 
     # Temporary buffer size
     TEMP_BUFFER_SIZE = 4 * 2**10
