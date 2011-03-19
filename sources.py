@@ -45,10 +45,10 @@ class StreamSource(looping.BaseIOEventHandler):
 class BufferedRawSource(StreamSource):
 
     # Temporary buffer size
-    TEMP_BUFFER_SIZE = 4 * 2**10
+    TEMP_BUFFER_SIZE = 64 * 2**10
 
     # Size of initial data burst for clients
-    BURST_SIZE = 32 * 2**10
+    BURST_SIZE = 64 * 2**10
 
     def __init__(self, server, sock, address, content_type, request_parser):
         StreamSource.__init__(self, server, sock, address, content_type, request_parser)
