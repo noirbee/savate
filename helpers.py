@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import errno
+import collections
 import looping
 from looping import BaseIOEventHandler
 import buffer_event
@@ -57,3 +58,47 @@ class HTTPEventHandler(BaseIOEventHandler):
     def handle_event(self, eventmask):
         if eventmask & looping.POLLOUT:
             self.finish()
+
+class BurstQueue(collections.deque):
+
+    def __init__(self, maxbytes, iterable = ()):
+        collections.deque.__init__(self, iterable)
+        self.maxbytes = maxbytes
+        self.current_size = sum(len(data) for data in iterable)
+
+    def _discard(self):
+        while (self.current_size - len(self[0])) > self.maxbytes:
+            self.popleft()
+
+    def append(self, data):
+        collections.deque.append(self, data)
+        self.current_size += len(data)
+        self._discard()
+
+    def extend(self, iterable):
+        collections.deque.extend(self, iterable)
+        self.current_size += sum(len(data) for data in iterable)
+        self._discard()
+
+    def appendleft(self, data):
+        raise NotImplementedError('appendleft() makes no sense for this data type')
+
+    def extendleft(self, iterable):
+        raise NotImplementedError('extendleft() makes no sense for this data type')
+
+    def remove(self, value):
+        raise NotImplementedError('remove() is not supported for this data type')
+
+    def pop(self):
+        ret = collections.deque.pop(self)
+        self.current_size -= len(ret)
+        return ret
+
+    def popleft(self):
+        ret = collections.deque.popleft(self)
+        self.current_size -= len(ret)
+        return ret
+
+    def clear(self):
+        collections.deque.clear(self)
+        self.current_size = 0

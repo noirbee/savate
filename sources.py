@@ -2,7 +2,6 @@
 
 import helpers
 import looping
-import collections
 import math
 
 class StreamSource(looping.BaseIOEventHandler):
@@ -54,7 +53,7 @@ class BufferedRawSource(StreamSource):
     def __init__(self, server, sock, address, content_type, request_parser):
         StreamSource.__init__(self, server, sock, address, content_type, request_parser)
         self.output_buffer_data = request_parser.body
-        self.burst_packets = collections.deque([self.buffer_data], math.ceil(float(self.BURST_SIZE) / float(self.TEMP_BUFFER_SIZE)))
+        self.burst_packets = helpers.BurstQueue(self.BURST_SIZE)
 
     def publish_packet(self, packet):
         self.output_buffer_data = self.output_buffer_data + packet
