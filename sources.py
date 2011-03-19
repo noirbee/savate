@@ -53,15 +53,15 @@ class BufferedRawSource(StreamSource):
 
     def __init__(self, server, sock, address, content_type, request_parser):
         StreamSource.__init__(self, server, sock, address, content_type, request_parser)
-        self.buffer_data = request_parser.body
+        self.output_buffer_data = request_parser.body
         self.burst_packets = collections.deque([self.buffer_data], math.ceil(float(self.BURST_SIZE) / float(self.TEMP_BUFFER_SIZE)))
 
     def publish_packet(self, packet):
-        self.buffer_data = self.buffer_data + packet
-        if len(self.buffer_data) >= self.TEMP_BUFFER_SIZE:
-            StreamSource.publish_packet(self, self.buffer_data)
-            self.burst_packets.append(self.buffer_data)
-            self.buffer_data = ''
+        self.output_buffer_data = self.output_buffer_data + packet
+        if len(self.output_buffer_data) >= self.TEMP_BUFFER_SIZE:
+            StreamSource.publish_packet(self, self.output_buffer_data)
+            self.burst_packets.append(self.output_buffer_data)
+            self.output_buffer_data = ''
 
     def new_client(self, client):
         for packet in self.burst_packets:

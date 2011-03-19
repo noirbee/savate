@@ -6,13 +6,15 @@ from flv import FLVHeader, FLVTag, FLVAudioData, FLVVideoData
 import looping
 import helpers
 
-class FLVSource(BufferedRawSource, StreamSource):
+class FLVSource(BufferedRawSource):
 
     # Initial burst duration, in seconds
     BURST_DURATION = 5
 
     def __init__(self, sock, server, address, content_type, request_parser):
         BufferedRawSource.__init__(self, sock, server, address, content_type, request_parser)
+        # Initial buffer data
+        self.buffer_data = request_parser.body
         # The FLV stream header
         self.stream_header = None
         # These are the initial setup tags we send out to each new
@@ -35,9 +37,6 @@ class FLVSource(BufferedRawSource, StreamSource):
             for tag in group:
                 client.add_packet(tag.raw_data)
                 client.add_packet(tag.body)
-
-    def publish_packet(self, packet):
-        StreamSource.publish_packet(self, packet)
 
     def handle_event(self, eventmask):
         if eventmask & looping.POLLIN:
