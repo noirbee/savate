@@ -66,6 +66,22 @@ class BufferedRawSource(StreamSource):
         for packet in self.burst_packets:
             client.add_packet(packet)
 
+class FixedPacketSizeSource(BufferedRawSource, StreamSource):
+
+    def publish_packet(self, packet):
+        self.output_buffer_data = self.output_buffer_data + packet
+        if len(self.output_buffer_data) >= self.TEMP_BUFFER_SIZE:
+            nb_packets, remaining_bytes = divmod(len(self.output_buffer_data),
+                                                 self.PACKET_SIZE)
+            if remaining_bytes:
+                tmp_data = self.output_buffer_data[nb_packets * self.PACKET_SIZE:]
+                self.output_buffer_data = self.output_buffer_data[-remaining_bytes:]
+            else:
+                tmp_data = self.output_buffer_data
+                self.output_buffer_data = ''
+            StreamSource.publish_packet(self, tmp_data)
+            self.burst_packets.append(tmp_data)
+
 from flv_source import FLVSource
 
 sources_mapping = {
