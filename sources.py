@@ -82,10 +82,16 @@ class FixedPacketSizeSource(BufferedRawSource, StreamSource):
             StreamSource.publish_packet(self, tmp_data)
             self.burst_packets.append(tmp_data)
 
+class MPEGTSSource(FixedPacketSizeSource):
+
+    MPEGTS_PACKET_SIZE = 188
+    PACKET_SIZE = MPEGTS_PACKET_SIZE
+
 from flv_source import FLVSource
 
 sources_mapping = {
     b'video/x-flv': FLVSource,
     b'audio/x-hx-aac-adts': BufferedRawSource,
     b'application/octet-stream': BufferedRawSource,
+    b'video/MP2T': MPEGTSSource,
     }
