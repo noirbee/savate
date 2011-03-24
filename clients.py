@@ -26,13 +26,11 @@ class StreamClient(HTTPEventHandler):
         HTTPEventHandler.close(self)
 
     def flush_if_ready(self):
-        # print 'buffer is ready: %s' % (self.output_buffer.ready)
         if self.output_buffer.ready:
             self.output_buffer.flush()
 
     def handle_event(self, eventmask):
         if eventmask & looping.POLLOUT:
-            # print 'lol I can write, %d items in buffer' % (len(self.output_buffer.buffer_queue))
             self.output_buffer.flush()
         else:
             print 'Unexpected eventmask %s' % (eventmask)
