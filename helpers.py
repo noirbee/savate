@@ -25,6 +25,15 @@ def loop_for_eagain(func, *args, **kwargs):
         else:
             raise
 
+def build_http_headers(headers, body):
+    default_headers = {
+        b'Connection': b'close',
+        b'Content-Length': len(body),
+        }
+    default_headers.update(headers)
+    return b''.join(b'%s: %s\r\n' % (key, value) for key, value
+                    in default_headers.items() if value)
+
 class HTTPError(Exception):
     pass
 class HTTPParseError(HTTPError):
@@ -44,14 +53,8 @@ class HTTPEventHandler(BaseIOEventHandler):
         self.output_buffer.add_buffer(data)
 
     def _build_response(self, status, reason, headers, body):
-        default_headers = {
-            b'Connection': b'close',
-            b'Content-Length': len(body),
-            }
-        default_headers.update(headers)
         status_line = b'HTTP/1.1 %d %s' % (status, reason)
-        headers_lines = b''.join(b'%s: %s\r\n' % (key, value) for key, value
-                                 in default_headers.items() if value)
+        headers_lines = build_http_headers(headers, body)
         return b'\r\n'.join([status_line, headers_lines, body])
 
     def finish(self):
