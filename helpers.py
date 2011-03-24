@@ -25,6 +25,11 @@ def loop_for_eagain(func, *args, **kwargs):
         else:
             raise
 
+class HTTPError(Exception):
+    pass
+class HTTPParseError(HTTPError):
+    pass
+
 class HTTPEventHandler(BaseIOEventHandler):
 
     def __init__(self, server, sock, address, request_parser,

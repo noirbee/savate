@@ -3,15 +3,11 @@
 import socket
 import looping
 import helpers
+from helpers import HTTPError, HTTPParseError
 import clients
 import sources
 import collections
 import cyhttp11
-
-class HTTPError(Exception):
-    pass
-class HTTPParseError(HTTPError):
-    pass
 
 class HTTPClient(looping.BaseIOEventHandler):
 
