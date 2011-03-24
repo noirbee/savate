@@ -2,6 +2,7 @@
 
 import errno
 import collections
+import writev
 
 # FIXME: should this be a method of BufferEvent below ?
 # FIXME: handle Python2.x/Python3k compat here
@@ -25,14 +26,14 @@ class BufferOutputHandler(object):
         self.ready = True
         try:
             while self.buffer_queue:
-                tmp_data = self.buffer_queue[0]
-                # FIXME: should we use socket.MSG_DONTWAIT here ?
-                sent_bytes = self.sock.send(tmp_data)
-                tmp_data = buffer_slice(tmp_data, sent_bytes, -1)
-                if tmp_data:
-                    self.buffer_queue[0] = tmp_data
-                else:
-                    self.buffer_queue.popleft()
+                sent_bytes = writev.writev(self.sock.fileno(),
+                                             self.buffer_queue)
+                while (self.buffer_queue and sent_bytes and
+                       len(self.buffer_queue[0]) <= sent_bytes):
+                    sent_bytes -= len(self.buffer_queue.popleft())
+                if sent_bytes:
+                    # One of the buffers was partially sent
+                    self.buffer_queue[0] = self.buffer_queue[0][sent_bytes:]
         except IOError, exc:
             if exc.errno == errno.EAGAIN:
                 self.ready = False
