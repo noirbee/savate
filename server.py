@@ -192,4 +192,6 @@ class TCPServer(looping.BaseIOEventHandler):
 if __name__ == '__main__':
 
     server = TCPServer(('127.0.0.1', 5555))
+    relay = relay.HTTPRelay(server, 'http://example.com:80/stream.flv', '/stream.flv')
+    server.loop.register(relay, looping.POLLOUT)
     server.serve_forever()
