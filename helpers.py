@@ -32,7 +32,7 @@ def build_http_headers(headers, body):
         }
     default_headers.update(headers)
     return b''.join(b'%s: %s\r\n' % (key, value) for key, value
-                    in default_headers.items() if value)
+                    in default_headers.items() if value != None)
 
 class HTTPError(Exception):
     pass
