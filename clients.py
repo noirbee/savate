@@ -3,12 +3,13 @@
 from helpers import HTTPEventHandler
 import looping
 import buffer_event
+import pprint
 
 class StatusClient(HTTPEventHandler):
 
     def __init__(self, server, sock, address, request_parser):
         HTTPEventHandler.__init__(self, server, sock, address, request_parser,
-                                  204, b'No content')
+                                  200, b'OK', {}, pprint.pformat(server.sources))
 
 class StreamClient(HTTPEventHandler):
 
