@@ -8,6 +8,7 @@ import clients
 import sources
 import collections
 import cyhttp11
+import relay
 
 class HTTPClient(looping.BaseIOEventHandler):
 

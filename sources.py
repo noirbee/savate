@@ -9,13 +9,13 @@ class StreamSource(looping.BaseIOEventHandler):
     # Incoming maximum buffer size
     RECV_BUFFER_SIZE = 64 * 2**10
 
-    def __init__(self, server, sock, address, content_type, request_parser):
+    def __init__(self, server, sock, address, content_type, request_parser, path = None):
         self.server = server
         self.sock = sock
         self.address = address
         self.content_type = content_type
         self.request_parser = request_parser
-        self.path = self.request_parser.request_path
+        self.path = path or self.request_parser.request_path
 
     def handle_event(self, eventmask):
         if eventmask & looping.POLLIN:
@@ -50,8 +50,8 @@ class BufferedRawSource(StreamSource):
     # Size of initial data burst for clients
     BURST_SIZE = 64 * 2**10
 
-    def __init__(self, server, sock, address, content_type, request_parser):
-        StreamSource.__init__(self, server, sock, address, content_type, request_parser)
+    def __init__(self, server, sock, address, content_type, request_parser, path = None):
+        StreamSource.__init__(self, server, sock, address, content_type, request_parser, path)
         self.output_buffer_data = request_parser.body
         self.burst_packets = helpers.BurstQueue(self.BURST_SIZE)
 

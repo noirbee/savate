@@ -11,8 +11,8 @@ class FLVSource(BufferedRawSource):
     # Initial burst duration, in seconds
     BURST_DURATION = 5
 
-    def __init__(self, sock, server, address, content_type, request_parser):
-        BufferedRawSource.__init__(self, sock, server, address, content_type, request_parser)
+    def __init__(self, sock, server, address, content_type, request_parser, path = None):
+        BufferedRawSource.__init__(self, sock, server, address, content_type, request_parser, path)
         # Initial buffer data
         self.buffer_data = request_parser.body
         # The FLV stream header
