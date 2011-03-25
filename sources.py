@@ -91,6 +91,7 @@ from flv_source import FLVSource
 
 sources_mapping = {
     b'video/x-flv': FLVSource,
+    b'application/x-flv': FLVSource,
     b'audio/x-hx-aac-adts': BufferedRawSource,
     b'application/octet-stream': BufferedRawSource,
     b'video/MP2T': MPEGTSSource,
