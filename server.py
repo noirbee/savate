@@ -9,6 +9,7 @@ import sources
 import collections
 import cyhttp11
 import relay
+import random
 
 class HTTPClient(looping.BaseIOEventHandler):
 
@@ -99,7 +100,7 @@ class HTTPClient(looping.BaseIOEventHandler):
                 # New client for one of our sources
                 if self.server.sources.get(path, []):
                     # FIXME: proper source selection
-                    source = self.server.sources[path].keys()[0]
+                    source = random.choice(self.server.sources[path].keys())
                     new_client = clients.StreamClient(self.server,
                                                       source,
                                                       self.sock,
