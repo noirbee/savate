@@ -9,7 +9,8 @@ class StatusClient(HTTPEventHandler):
 
     def __init__(self, server, sock, address, request_parser):
         HTTPEventHandler.__init__(self, server, sock, address, request_parser,
-                                  200, b'OK', {}, pprint.pformat(server.sources))
+                                  200, b'OK', {b'Content-Type': 'text/plain'},
+                                  pprint.pformat(server.sources))
 
 class StreamClient(HTTPEventHandler):
 
