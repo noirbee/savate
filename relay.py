@@ -16,15 +16,23 @@ class HTTPRelay(looping.BaseIOEventHandler):
     HTTP_VERSION = b'HTTP/1.1'
     RESPONSE_MAX_SIZE = 4096
 
-    def __init__(self, server, url, path):
+    def __init__(self, server, url, path, addr_info = None):
         self.server = server
         self.url = url
         self.parsed_url = urlparse.urlparse(url)
         self.path = path
-        self.sock = socket.socket()
+        if addr_info:
+            self.sock = socket.socket(addr_info[0], addr_info[1], addr_info[2])
+            self.host_address = addr_info[4][0]
+            self.host_port = addr_info[4][1]
+        else:
+            self.sock = socket.socket()
+            self.host_address = self.parsed_url.hostname
+            self.host_port = self.parsed_url.port
+
         self.sock.setblocking(0)
-        error = self.sock.connect_ex((self.parsed_url.hostname,
-                                      self.parsed_url.port))
+        error = self.sock.connect_ex((self.host_address,
+                                      self.host_port))
         if error != errno.EINPROGRESS:
             raise socket.error(error, errno.errorcode[error])
         self.handle_event = self.handle_connect
@@ -95,7 +103,8 @@ class HTTPRelay(looping.BaseIOEventHandler):
             raise HTTPError('Unexpected response %d %s from %s, %s' %
                             (self.response_parser.status_code,
                              self.response_parser.reason_phrase,
-                             self.sock, self.address))
+                             self.url,
+                             (self.sock, self.address)))
         content_type = self.response_parser.headers.get('Content-Type',
                                                         'application/octet-stream')
         # FIXME: similar code is present in server.py

@@ -47,7 +47,7 @@ class FLVSource(BufferedRawSource):
                     break
                 elif packet == b'':
                     # End of stream
-                    print 'End of stream for %s, %s' % (self.sock, self.address)
+                    print 'End of stream for %s, %s' % (self.path, (self.sock, self.address))
                     self.server.remove_source(self)
                     # FIXME: publish "EOS" packet
                     break
