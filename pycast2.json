@@ -1,0 +1,20 @@
+{
+    "bind": "0.0.0.0",
+    "port": 5555,
+    "net_resolve_all": false,
+    "relays": [
+        {
+	    "net_resolve_all": true,
+            "path": "/example/stream.flv",
+            "source_urls": [
+                "http://example.com:80/stream.flv"
+            ]
+        },
+	{
+	    "path": "/example2.flv",
+	    "source_urls": [
+		"http://example.com:8000/directory/stream2.flv"
+	    ]
+	}
+    ]
+}

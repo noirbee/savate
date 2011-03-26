@@ -192,7 +192,32 @@ class TCPServer(looping.BaseIOEventHandler):
 
 if __name__ == '__main__':
 
-    server = TCPServer(('127.0.0.1', 5555))
-    relay = relay.HTTPRelay(server, 'http://example.com:80/stream.flv', '/stream.flv')
-    server.loop.register(relay, looping.POLLOUT)
+    import json
+    with open('pycast2.json') as conffile:
+        conf = json.load(conffile)
+
+    import urlparse
+
+    server = TCPServer((conf.get('bind', '0.0.0.0'), conf.get('port', 5555)))
+
+    net_resolve_all = conf.get('net_resolve_all', False)
+
+    for relay_conf in conf.get('relays', {}):
+        print relay_conf
+        path = relay_conf['path']
+        for source_url in relay_conf['source_urls']:
+            parsed_url = urlparse.urlparse(source_url)
+            if relay_conf.get('net_resolve_all', net_resolve_all):
+                for address_info in socket.getaddrinfo(
+                    parsed_url.hostname,
+                    parsed_url.port,
+                    socket.AF_UNSPEC,
+                    socket.SOCK_STREAM,
+                    socket.IPPROTO_TCP):
+                    tmp_relay = relay.HTTPRelay(server, source_url, path, address_info)
+                    server.loop.register(tmp_relay, looping.POLLOUT)
+            else:
+                tmp_relay = relay.HTTPRelay(server, source_url, path)
+                server.loop.register(tmp_relay, looping.POLLOUT)
+
     server.serve_forever()
