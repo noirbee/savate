@@ -1,0 +1,48 @@
+#! /usr/bin/python
+# -*- coding: utf-8 -*-
+
+import optparse
+parser = optparse.OptionParser()
+parser.set_defaults(config_file = '@pycast2sysconfdir@/pycast2.json')
+parser.add_option('-c', '--config', dest = 'config_file', help = 'JSON configuration file to use', metavar = 'CONFIG')
+
+options, args = parser.parse_args()
+
+try:
+    import json
+except ImportError:
+    import simplejson as json
+
+with open(options.config_file) as conffile:
+    conf = json.load(conffile)
+
+import urlparse
+
+import socket
+from pycast2.server import TCPServer
+import pycast2.looping
+import pycast2.relay
+
+server = TCPServer((conf.get('bind', '0.0.0.0'), conf.get('port', 5555)))
+
+net_resolve_all = conf.get('net_resolve_all', False)
+
+for relay_conf in conf.get('relays', {}):
+    print relay_conf
+    path = relay_conf['path']
+    for source_url in relay_conf['source_urls']:
+        parsed_url = urlparse.urlparse(source_url)
+        if relay_conf.get('net_resolve_all', net_resolve_all):
+            for address_info in socket.getaddrinfo(
+                parsed_url.hostname,
+                parsed_url.port,
+                socket.AF_UNSPEC,
+                socket.SOCK_STREAM,
+                socket.IPPROTO_TCP):
+                tmp_relay = pycast2.relay.HTTPRelay(server, source_url, path, address_info)
+                server.loop.register(tmp_relay, pycast2.looping.POLLOUT)
+        else:
+            tmp_relay = pycast2.relay.HTTPRelay(server, source_url, path)
+            server.loop.register(tmp_relay, pycast2.looping.POLLOUT)
+
+server.serve_forever()
