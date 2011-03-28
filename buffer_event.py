@@ -24,10 +24,12 @@ class BufferOutputHandler(object):
 
     def flush(self):
         self.ready = True
+        total_sent_bytes = 0
         try:
             while self.buffer_queue:
                 sent_bytes = writev.writev(self.sock.fileno(),
                                              self.buffer_queue)
+                total_sent_bytes += sent_bytes
                 while (self.buffer_queue and sent_bytes and
                        len(self.buffer_queue[0]) <= sent_bytes):
                     sent_bytes -= len(self.buffer_queue.popleft())
@@ -39,3 +41,4 @@ class BufferOutputHandler(object):
                 self.ready = False
             else:
                 raise
+        return total_sent_bytes
