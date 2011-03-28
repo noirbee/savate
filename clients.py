@@ -2,7 +2,6 @@
 
 from helpers import HTTPEventHandler
 import looping
-import buffer_event
 import pprint
 
 class StatusClient(HTTPEventHandler):
