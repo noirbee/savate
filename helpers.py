@@ -2,6 +2,7 @@
 
 import errno
 import collections
+import datetime
 import looping
 from looping import BaseIOEventHandler
 import buffer_event
@@ -51,20 +52,25 @@ class HTTPEventHandler(BaseIOEventHandler):
         self.output_buffer = buffer_event.BufferOutputHandler(sock)
         data = self._build_response(status, reason, headers or {}, body)
         self.output_buffer.add_buffer(data)
+        self.last_activity = datetime.datetime.now()
 
     def _build_response(self, status, reason, headers, body):
         status_line = b'HTTP/1.1 %d %s' % (status, reason)
         headers_lines = build_http_headers(headers, body)
         return b'\r\n'.join([status_line, headers_lines, body])
 
+    def flush(self):
+        if self.output_buffer.flush():
+            self.last_activity = datetime.datetime.now()
+
     def finish(self):
-        self.output_buffer.flush()
         if self.output_buffer.empty():
             self.server.loop.unregister(self)
             self.close()
 
     def handle_event(self, eventmask):
         if eventmask & looping.POLLOUT:
+            self.flush()
             self.finish()
 
 class BurstQueue(collections.deque):

@@ -28,10 +28,10 @@ class StreamClient(HTTPEventHandler):
 
     def flush_if_ready(self):
         if self.output_buffer.ready:
-            self.output_buffer.flush()
+            self.flush()
 
     def handle_event(self, eventmask):
         if eventmask & looping.POLLOUT:
-            self.output_buffer.flush()
+            self.flush()
         else:
             print 'Unexpected eventmask %s' % (eventmask)
