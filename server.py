@@ -116,7 +116,7 @@ class HTTPClient(looping.BaseIOEventHandler):
                     loop.register(new_client,
                                   looping.POLLOUT | looping.POLLET)
                 else:
-                    # Unknown HTTP request method
+                    # Stream does not exist
                     loop.register(helpers.HTTPEventHandler(self.server,
                                                            self.sock,
                                                            self.address,
