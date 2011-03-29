@@ -97,6 +97,14 @@ class HTTPClient(looping.BaseIOEventHandler):
                                                    self.request_parser),
                               looping.POLLOUT)
 
+            if path in [b'/status.json']:
+                # Deliver server status, JSON version
+                loop.register(clients.JSONStatusClient(self.server,
+                                                       self.sock,
+                                                       self.address,
+                                                       self.request_parser),
+                              looping.POLLOUT)
+
             else:
                 # New client for one of our sources
                 if self.server.sources.get(path, []):

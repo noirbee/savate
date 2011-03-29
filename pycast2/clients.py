@@ -1,5 +1,9 @@
 # -*- coding: utf-8 -*-
 
+try:
+    import json
+except ImportError:
+    import simplejson as json
 import pprint
 from pycast2.helpers import HTTPEventHandler
 from pycast2 import looping
@@ -10,6 +14,23 @@ class StatusClient(HTTPEventHandler):
         HTTPEventHandler.__init__(self, server, sock, address, request_parser,
                                   200, b'OK', {b'Content-Type': 'text/plain'},
                                   pprint.pformat(server.sources))
+
+class JSONStatusClient(HTTPEventHandler):
+
+    def __init__(self, server, sock, address, request_parser):
+        sources_dict = {}
+        print server.sources.items()
+        for path, sources in server.sources.items():
+            sources_dict[path] = {}
+            for source, source_dict in sources.items():
+                source_address = '%s:%s' % source.address
+                sources_dict[path][source_address] = {}
+                for fd, client in source_dict['clients'].items():
+                    sources_dict[path][source_address][fd] = '%s:%s' % client.address
+
+        HTTPEventHandler.__init__(self, server, sock, address, request_parser,
+                                  200, b'OK', {b'Content-Type': 'application/json'},
+                                  json.dumps(sources_dict, indent = 4) + '\n')
 
 class StreamClient(HTTPEventHandler):
 
