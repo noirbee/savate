@@ -2,15 +2,15 @@
 
 import socket
 import logging
-import looping
-import helpers
-from helpers import HTTPError, HTTPParseError
-import clients
-import sources
 import collections
-import cyhttp11
-import relay
 import random
+import cyhttp11
+from pycast2 import looping
+from pycast2 import helpers
+from pycast2.helpers import HTTPError, HTTPParseError
+from pycast2 import clients
+from pycast2 import sources
+from pycast2 import relay
 
 class HTTPClient(looping.BaseIOEventHandler):
 

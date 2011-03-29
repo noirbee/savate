@@ -3,9 +3,9 @@
 import errno
 import collections
 import datetime
-import looping
-from looping import BaseIOEventHandler
-import buffer_event
+from pycast2 import looping
+from pycast2.looping import BaseIOEventHandler
+from pycast2 import buffer_event
 
 def handle_eagain(func, *args, **kwargs):
     try:

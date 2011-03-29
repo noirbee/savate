@@ -1,8 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import struct
-
-from binary_parser import BinaryParser, BinaryParserError
+from pycast2.binary_parser import BinaryParser, BinaryParserError
 
 class FLVHeader(BinaryParser):
 

@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 
-from helpers import HTTPEventHandler
-import looping
 import pprint
+from pycast2.helpers import HTTPEventHandler
+from pycast2 import looping
 
 class StatusClient(HTTPEventHandler):
 

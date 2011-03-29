@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 
 import collections
-from sources import BufferedRawSource, StreamSource
-from flv import FLVHeader, FLVTag, FLVAudioData, FLVVideoData
-import looping
-import helpers
+from pycast2.sources import BufferedRawSource, StreamSource
+from pycast2.flv import FLVHeader, FLVTag, FLVAudioData, FLVVideoData
+from pycast2 import looping
+from pycast2 import helpers
 
 class FLVSource(BufferedRawSource):
 

@@ -4,11 +4,11 @@ import errno
 import urlparse
 import socket
 import cyhttp11
-import looping
-import sources
-import helpers
-from helpers import HTTPError, HTTPParseError
-import buffer_event
+from pycast2 import looping
+from pycast2 import sources
+from pycast2 import helpers
+from pycast2.helpers import HTTPError, HTTPParseError
+from pycast2 import buffer_event
 
 class HTTPRelay(looping.BaseIOEventHandler):
 
