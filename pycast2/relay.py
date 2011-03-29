@@ -84,7 +84,8 @@ class HTTPRelay(looping.BaseIOEventHandler):
                     break
                 elif tmp_buffer == b'':
                     raise HTTPError('Unexpected end of stream from %s, %s' %
-                                    (self.sock, self.address))
+                                    (self.url,
+                                    (self.sock, self.address)))
                 self.response_buffer = self.response_buffer + tmp_buffer
                 self.response_size += len(tmp_buffer)
                 self.response_parser.execute(self.response_buffer)
