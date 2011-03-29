@@ -16,6 +16,13 @@ except ImportError:
 with open(options.config_file) as conffile:
     conf = json.load(conffile)
 
+import logging
+logger = logging.getLogger('pycast2')
+handler = logging.FileHandler(conf['log_file'])
+handler.setFormatter(logging.Formatter("%(asctime)s:%(levelname)s:%(name)s: %(message)s"))
+logger.addHandler(handler)
+logger.setLevel(logging.INFO)
+
 import urlparse
 
 import socket
@@ -23,26 +30,36 @@ from pycast2.server import TCPServer
 import pycast2.looping
 import pycast2.relay
 
-server = TCPServer((conf.get('bind', '0.0.0.0'), conf.get('port', 5555)))
+server = TCPServer((conf.get('bind', '0.0.0.0'), conf.get('port', 5555)), logger)
+
+logger.info('Serving on %s:%s', *server.address)
 
 net_resolve_all = conf.get('net_resolve_all', False)
 
 for relay_conf in conf.get('relays', {}):
-    print relay_conf
+    logger.info('Setting up relays for %s', relay_conf['path'])
     path = relay_conf['path']
     for source_url in relay_conf['source_urls']:
+        logger.info('Relaying %s', source_url)
         parsed_url = urlparse.urlparse(source_url)
         if relay_conf.get('net_resolve_all', net_resolve_all):
+            logger.info('Resolving all IP addresses for %s:%s',
+                        parsed_url.hostname, parsed_url.port)
             for address_info in socket.getaddrinfo(
                 parsed_url.hostname,
                 parsed_url.port,
                 socket.AF_UNSPEC,
                 socket.SOCK_STREAM,
                 socket.IPPROTO_TCP):
+                logger.info('Trying to relay %s from %s:%s', source_url,
+                            address_info[4][0], address_info[4][1])
                 tmp_relay = pycast2.relay.HTTPRelay(server, source_url, path, address_info)
                 server.loop.register(tmp_relay, pycast2.looping.POLLOUT)
         else:
             tmp_relay = pycast2.relay.HTTPRelay(server, source_url, path)
             server.loop.register(tmp_relay, pycast2.looping.POLLOUT)
 
+logger.info('Done setting up relays')
+
+logger.info('Starting main loop')
 server.serve_forever()

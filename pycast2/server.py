@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import socket
+import logging
 import looping
 import helpers
 from helpers import HTTPError, HTTPParseError
@@ -56,7 +57,7 @@ class HTTPClient(looping.BaseIOEventHandler):
         # FIXME: should we shutdown() read or write depending on what
         # we do here ? (i.e. SHUT_RD for GETs, SHUT_WD for sources)
 
-        self.server.log('Request headers: %s' % (self.request_parser.headers))
+        self.server.logger.info('Request headers: %s', self.request_parser.headers)
 
         path = self.request_parser.request_path
 
@@ -65,7 +66,7 @@ class HTTPClient(looping.BaseIOEventHandler):
             content_type = self.request_parser.headers.get('Content-Type',
                                                            'application/octet-stream')
             if content_type in sources.sources_mapping:
-                self.server.log('New source %s, %s' % (self.sock, self.address))
+                self.server.logger.info('New source for %s: %s', path, self.address)
                 source = sources.sources_mapping[content_type](self.server,
                                                                self.sock,
                                                                self.address,
@@ -78,7 +79,7 @@ class HTTPClient(looping.BaseIOEventHandler):
                 loop.register(source,
                               looping.POLLIN)
             else:
-                self.server.log('Unrecognized Content-Type %s' % (content_type))
+                self.server.logger.warning('Unrecognized Content-Type %s', content_type)
                 loop.register(helpers.HTTPEventHandler(self.server,
                                                        self.sock,
                                                        self.address,
@@ -142,9 +143,10 @@ class TCPServer(looping.BaseIOEventHandler):
 
     LOOP_TIMEOUT = 0.5
 
-    def __init__(self, address):
+    def __init__(self, address, logger = None):
         self.address = address
-        self.loop = looping.IOLoop()
+        self.logger = logger or logging.getLogger('pycast2')
+        self.loop = looping.IOLoop(self.logger)
         self.create_socket(address)
         self.loop.register(self, looping.POLLIN)
         self.sources = {}
@@ -156,16 +158,13 @@ class TCPServer(looping.BaseIOEventHandler):
         self.sock.listen(self.BACKLOG)
         self.sock.setblocking(0)
 
-    def log(self, message, *args):
-        print message % (args)
-
     def handle_event(self, eventmask):
         if eventmask & looping.POLLIN:
             helpers.loop_for_eagain(self.handle_new_incoming)
 
     def handle_new_incoming(self):
         client_socket, client_address = self.sock.accept()
-        self.log('New client %s, %s', client_socket, client_address)
+        self.logger.info('New client %s, %s', client_socket, client_address)
         self.loop.register(HTTPClient(self, client_socket, client_address), looping.POLLIN)
 
     def remove_source(self, source):
@@ -176,9 +175,10 @@ class TCPServer(looping.BaseIOEventHandler):
         del self.sources[source.path][source]
 
     def remove_client(self, client):
-        self.log('Dropping client %s, %s', client.sock, client.address)
-        self.loop.unregister(client)
         source = client.source
+        self.logger.info('Dropping client for path %s, %s', source.path,
+                         client.address)
+        self.loop.unregister(client)
         del self.sources[source.path][source]['clients'][client.fileno()]
 
     def publish_packet(self, source, packet):

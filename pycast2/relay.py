@@ -110,7 +110,7 @@ class HTTPRelay(looping.BaseIOEventHandler):
         # FIXME: similar code is present in server.py
         loop = self.server.loop
         if content_type in sources.sources_mapping:
-            self.server.log('New source %s, %s' % (self.sock, self.address))
+            self.server.logger.info('New source for %s: %s', self.path, self.address)
             source = sources.sources_mapping[content_type](self.server,
                                                            self.sock,
                                                            self.address,
@@ -124,7 +124,7 @@ class HTTPRelay(looping.BaseIOEventHandler):
             loop.register(source,
                           looping.POLLIN)
         else:
-            self.server.log('Unrecognized Content-Type %s' % (content_type))
+            self.server.logger.warning('Unrecognized Content-Type %s', content_type)
             loop.register(helpers.HTTPEventHandler(self.server,
                                                    self.sock,
                                                    self.address,

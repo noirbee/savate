@@ -2,7 +2,7 @@
 
 import errno
 import select
-import traceback
+import logging
 
 POLLIN = select.EPOLLIN
 POLLOUT = select.EPOLLOUT
@@ -21,10 +21,11 @@ class IOLoop(object):
 
     DEFAULT_TIMEOUT = 0.5
 
-    def __init__(self):
+    def __init__(self, logger = None):
         self.poller = select.epoll()
         self.handlers = {}
         self.injected_events = {}
+        self.logger = logger or logging.getLogger('looping')
 
     def register(self, io_event_handler, eventmask):
         if io_event_handler.fileno() not in self.handlers:
@@ -66,6 +67,6 @@ class IOLoop(object):
                 handler.handle_event(eventmask)
             except Exception, exc:
                 # We're kinda hardcore
-                traceback.print_exc()
+                self.logger.exception('Exception when handling eventmask %s for fd %s:', eventmask, fd)
                 self.unregister(handler)
                 handler.close()

@@ -47,7 +47,7 @@ class FLVSource(BufferedRawSource):
                     break
                 elif packet == b'':
                     # End of stream
-                    print 'End of stream for %s, %s' % (self.path, (self.sock, self.address))
+                    self.server.logger.warn('End of stream for %s, %s', self.path, (self.sock, self.address))
                     self.server.remove_source(self)
                     # FIXME: publish "EOS" packet
                     break
@@ -56,7 +56,7 @@ class FLVSource(BufferedRawSource):
                     while self.handle_data():
                         pass
         else:
-            print 'Unexpected eventmask %s' % (eventmask)
+            self.server.logger.error('%s: unexpected eventmask %s', self, eventmask)
 
     def handle_header(self):
         if len(self.buffer_data) >= FLVHeader.object_size():

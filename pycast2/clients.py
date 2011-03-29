@@ -34,4 +34,4 @@ class StreamClient(HTTPEventHandler):
         if eventmask & looping.POLLOUT:
             self.flush()
         else:
-            print 'Unexpected eventmask %s' % (eventmask)
+            self.server.logger.error('%s: unexpected eventmask %s', self, eventmask)
