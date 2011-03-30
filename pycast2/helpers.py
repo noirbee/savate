@@ -62,6 +62,7 @@ class HTTPEventHandler(BaseIOEventHandler):
     def flush(self):
         if self.output_buffer.flush():
             self.last_activity = datetime.datetime.now()
+        self.server.check_for_timeout(self.last_activity)
 
     def finish(self):
         if self.output_buffer.empty():

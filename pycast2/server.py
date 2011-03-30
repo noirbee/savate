@@ -4,6 +4,7 @@ import socket
 import logging
 import collections
 import random
+import datetime
 import cyhttp11
 from pycast2 import looping
 from pycast2 import helpers
@@ -149,12 +150,17 @@ class HTTPClient(looping.BaseIOEventHandler):
                                                    b'Method Not Allowed'),
                           looping.POLLOUT)
 
+class InactivityTimeout(Exception):
+    pass
 
 class TCPServer(looping.BaseIOEventHandler):
 
     BACKLOG = 1000
 
     LOOP_TIMEOUT = 0.5
+
+    # Maximum I/O inactivity timeout, in milliseconds
+    INACTIVITY_TIMEOUT = 10 * 1000
 
     def __init__(self, address, logger = None):
         self.address = address
@@ -179,6 +185,13 @@ class TCPServer(looping.BaseIOEventHandler):
         client_socket, client_address = self.sock.accept()
         self.logger.info('New client %s, %s', client_socket, client_address)
         self.loop.register(HTTPClient(self, client_socket, client_address), looping.POLLIN)
+
+    def check_for_timeout(self, last_activity):
+        if ((datetime.datetime.now() - last_activity) >
+            datetime.timedelta(milliseconds = self.INACTIVITY_TIMEOUT)):
+            # Client/source timeout
+            raise InactivityTimeout('Timeout: %d milliseconds without I/O' %
+                                    self.INACTIVITY_TIMEOUT)
 
     def remove_source(self, source):
         # FIXME: client shutdown
