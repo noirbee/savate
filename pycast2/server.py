@@ -5,6 +5,7 @@ import logging
 import collections
 import random
 import datetime
+import re
 import cyhttp11
 from pycast2 import looping
 from pycast2 import helpers
@@ -65,6 +66,9 @@ class HTTPClient(looping.BaseIOEventHandler):
                                 self.request_parser.http_version,
                                 self.request_parser.headers)
 
+        # Squash any consecutive / into one
+        self.request_parser.request_path = re.sub('//+', '/',
+                                                  self.request_parser.request_path)
         path = self.request_parser.request_path
 
         if self.request_parser.request_method in [b'PUT', b'SOURCE', b'POST']:
