@@ -19,7 +19,6 @@ class JSONStatusClient(HTTPEventHandler):
 
     def __init__(self, server, sock, address, request_parser):
         sources_dict = {}
-        print server.sources.items()
         for path, sources in server.sources.items():
             sources_dict[path] = {}
             for source, source_dict in sources.items():
