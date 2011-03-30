@@ -8,8 +8,8 @@ from pycast2 import helpers
 
 class FLVSource(BufferedRawSource):
 
-    # Initial burst duration, in seconds
-    BURST_DURATION = 5
+    # Initial burst duration, in milliseconds
+    BURST_DURATION = 5 * 1000
 
     def __init__(self, sock, server, address, content_type, request_parser, path = None):
         BufferedRawSource.__init__(self, sock, server, address, content_type, request_parser, path)
