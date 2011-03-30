@@ -86,8 +86,12 @@ class FLVSource(BufferedRawSource):
                        self.current_tag.TRAILER_SIZE)
         if len(self.buffer_data) >= body_length:
             self.current_tag.body = self.buffer_data[:body_length]
-            self.check_for_initial_tag(self.current_tag)
-            self.add_to_burst_groups(self.current_tag)
+
+            if not self.check_for_initial_tag(self.current_tag):
+                # Tag is not one of the initial tag, but should we add
+                # it to our burst tags list ?
+                self.add_to_burst_groups(self.current_tag)
+
             self.publish_packet(self.current_tag.raw_data)
             self.publish_packet(self.current_tag.body)
             self.buffer_data = self.buffer_data[body_length:]
@@ -100,6 +104,7 @@ class FLVSource(BufferedRawSource):
         if (not self.got_initial_meta and flv_tag.tag_type == 'meta'):
             self.got_initial_meta = True
             self.initial_tags.append(flv_tag)
+            return True
 
         elif (not self.got_initial_audio and flv_tag.tag_type == 'audio'):
             audio_data = FLVAudioData()
@@ -108,6 +113,7 @@ class FLVSource(BufferedRawSource):
                 audio_data.aac_packet_type == audio_data.AAC_SEQUENCE_HEADER):
                 self.got_initial_audio = True
                 self.initial_tags.append(flv_tag)
+                return True
 
         elif (not self.got_initial_video and flv_tag.tag_type == 'video'):
             video_data = FLVVideoData()
@@ -116,6 +122,8 @@ class FLVSource(BufferedRawSource):
                 video_data.avc_packet_type == video_data.AVC_SEQUENCE_HEADER):
                 self.got_initial_video = True
                 self.initial_tags.append(flv_tag)
+                return True
+        return False
 
     def add_to_burst_groups(self, flv_tag):
         if self.is_sync_point(flv_tag) or len(self.burst_groups) == 0:
@@ -131,9 +139,16 @@ class FLVSource(BufferedRawSource):
             self.burst_groups[-1].append(flv_tag)
 
     def is_sync_point(self, flv_tag):
-        if (flv_tag.tag_type == 'video'):
-            video_data = FLVVideoData()
-            video_data.parse(flv_tag.body[:video_data.object_size])
-            return (video_data.frame_type == 'keyframe')
+        if self.stream_header.video:
+            # If our stream has video, we need to sync on keyframes
+            if (flv_tag.tag_type == 'video'):
+                video_data = FLVVideoData()
+                video_data.parse(flv_tag.body[:video_data.object_size])
+                return (video_data.frame_type == 'keyframe')
+            else:
+                # It's either a non-keyframe video tag or an audio or
+                # metadata tag
+                return False
         else:
+            # Audio only, no sync point needed
             return True
