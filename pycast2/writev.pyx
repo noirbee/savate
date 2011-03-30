@@ -2,6 +2,7 @@
 
 import os
 import errno as errno_module
+import itertools
 
 cdef extern from 'errno.h':
 
@@ -13,10 +14,7 @@ def writev(int fd, buffer_list):
     cdef iovec buffers[IOV_MAX]
     cdef int i = 0
 
-    if len(buffer_list) > IOV_MAX:
-        raise IOError(errno_module.EINVAL, 'Too many buffers (max %d)' % IOV_MAX)
-
-    for buff in buffer_list:
+    for buff in itertools.islice(buffer_list, IOV_MAX):
         # FIXME: using a buffer object breaks Cython's <char *> cast
         # (on Python2.6 at least). Find a way to work around this
         # (direct use of the CPython PyBuffer API maybe ?)
