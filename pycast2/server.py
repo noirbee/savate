@@ -57,7 +57,12 @@ class HTTPClient(looping.BaseIOEventHandler):
         # FIXME: should we shutdown() read or write depending on what
         # we do here ? (i.e. SHUT_RD for GETs, SHUT_WD for sources)
 
-        self.server.logger.info('Request headers: %s', self.request_parser.headers)
+        self.server.logger.info('%s:%s %s %s %s, request headers: %s',
+                                self.address[0], self.address[1],
+                                self.request_parser.request_method,
+                                self.request_parser.request_path,
+                                self.request_parser.http_version,
+                                self.request_parser.headers)
 
         path = self.request_parser.request_path
 
