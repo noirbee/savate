@@ -173,6 +173,7 @@ class TCPServer(looping.BaseIOEventHandler):
         self.create_socket(address)
         self.loop.register(self, looping.POLLIN)
         self.sources = {}
+        self.relays = {}
 
     def create_socket(self, address):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -189,6 +190,11 @@ class TCPServer(looping.BaseIOEventHandler):
         client_socket, client_address = self.sock.accept()
         self.logger.info('New client %s, %s', client_socket, client_address)
         self.loop.register(HTTPClient(self, client_socket, client_address), looping.POLLIN)
+
+    def add_relay(self, *relay_args):
+        tmp_relay = relay.HTTPRelay(*relay_args)
+        self.relays[tmp_relay.sock] = relay_args
+        self.loop.register(tmp_relay, looping.POLLOUT)
 
     def check_for_timeout(self, last_activity):
         if ((datetime.datetime.now() - last_activity) >

@@ -53,11 +53,9 @@ for relay_conf in conf.get('relays', {}):
                 socket.IPPROTO_TCP):
                 logger.info('Trying to relay %s from %s:%s', source_url,
                             address_info[4][0], address_info[4][1])
-                tmp_relay = pycast2.relay.HTTPRelay(server, source_url, path, address_info)
-                server.loop.register(tmp_relay, pycast2.looping.POLLOUT)
+                server.add_relay(server, source_url, path, address_info)
         else:
-            tmp_relay = pycast2.relay.HTTPRelay(server, source_url, path)
-            server.loop.register(tmp_relay, pycast2.looping.POLLOUT)
+            server.add_relay(server, source_url, path)
 
 logger.info('Done setting up relays')
 
