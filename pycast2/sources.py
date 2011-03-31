@@ -16,6 +16,10 @@ class StreamSource(looping.BaseIOEventHandler):
         self.request_parser = request_parser
         self.path = path or self.request_parser.request_path
 
+    def close(self):
+        self.server.remove_source(self)
+        looping.BaseIOEventHandler.close(self)
+
     def handle_event(self, eventmask):
         if eventmask & looping.POLLIN:
             while True:
@@ -26,7 +30,7 @@ class StreamSource(looping.BaseIOEventHandler):
                 elif packet == b'':
                     # End of stream
                     self.server.logger.warn('End of stream for %s, %s', self.path, (self.sock, self.address))
-                    self.server.remove_source(self)
+                    self.close()
                     # FIXME: publish "EOS" packet
                     break
                 else:

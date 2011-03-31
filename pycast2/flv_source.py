@@ -48,7 +48,7 @@ class FLVSource(BufferedRawSource):
                 elif packet == b'':
                     # End of stream
                     self.server.logger.warn('End of stream for %s, %s', self.path, (self.sock, self.address))
-                    self.server.remove_source(self)
+                    self.close()
                     # FIXME: publish "EOS" packet
                     break
                 else:
