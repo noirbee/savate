@@ -4,7 +4,7 @@
 import os
 import sys
 import unittest
-import writev
+from pycast2 import writev
 
 class TestWritev(unittest.TestCase):
 
@@ -14,10 +14,6 @@ class TestWritev(unittest.TestCase):
         # FIXME: use tempfile()
         self.output_name = '/tmp/lol.out'
         self.output = open(self.output_name, 'wb+')
-
-    def test_too_many_buffers(self):
-        self.assertRaises(IOError, writev.writev, self.output.fileno(),
-                          ('a',) * (self.IOV_MAX + 1))
 
     def test_written(self):
         buff = 'abcdef'
