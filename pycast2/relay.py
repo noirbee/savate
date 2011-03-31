@@ -37,6 +37,10 @@ class HTTPRelay(looping.BaseIOEventHandler):
             raise socket.error(error, errno.errorcode[error])
         self.handle_event = self.handle_connect
 
+    def close(self):
+        self.server.check_for_relay_restart(self)
+        looping.BaseIOEventHandler.close(self)
+
     def handle_connect(self, eventmask):
         if eventmask & looping.POLLOUT:
             error = self.sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)

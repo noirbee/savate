@@ -174,6 +174,7 @@ class TCPServer(looping.BaseIOEventHandler):
         self.loop.register(self, looping.POLLIN)
         self.sources = {}
         self.relays = {}
+        self.relays_to_restart = collections.deque()
 
     def create_socket(self, address):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -203,12 +204,18 @@ class TCPServer(looping.BaseIOEventHandler):
             raise InactivityTimeout('Timeout: %d milliseconds without I/O' %
                                     self.INACTIVITY_TIMEOUT)
 
+    def check_for_relay_restart(self, handler):
+        # If this is one of our relays, mark it for restart
+        if handler.sock in self.relays:
+            self.relays_to_restart.append(self.relays.pop(handler.sock))
+
     def remove_source(self, source):
         # FIXME: client shutdown
         for client in self.sources[source.path][source]['clients'].values():
             client.close()
         self.loop.unregister(source)
         del self.sources[source.path][source]
+        self.check_for_relay_restart(source)
 
     def remove_client(self, client):
         source = client.source
@@ -225,3 +232,6 @@ class TCPServer(looping.BaseIOEventHandler):
     def serve_forever(self):
         while True:
             self.loop.once(self.LOOP_TIMEOUT)
+            while self.relays_to_restart:
+                self.logger.info('Restarting relay %s', self.relays_to_restart[0])
+                self.add_relay(*self.relays_to_restart.popleft())
