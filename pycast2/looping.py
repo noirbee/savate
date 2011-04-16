@@ -62,7 +62,16 @@ class IOLoop(object):
                 else:
                     raise
         for fd, eventmask in self._merge_eventlists(dict(events_list)).items():
-            handler = self.handlers[fd]
+            try:
+                handler = self.handlers[fd]
+            except KeyError, exc:
+                # There's a bug somewhere. Could be epoll, could be us.
+                self.logger.error('fd %d returned by epoll() is not in self.handlers !')
+                try:
+                    self.poller.unregister(fd)
+                except:
+                    pass
+                continue
             try:
                 handler.handle_event(eventmask)
             except Exception, exc:
