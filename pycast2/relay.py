@@ -99,6 +99,7 @@ class HTTPRelay(looping.BaseIOEventHandler):
                 elif self.response_parser.is_finished():
                     # Transform this into the appropriate handler
                     self.transform_response()
+                    break
                 elif self.response_size >= self.RESPONSE_MAX_SIZE:
                     raise HTTPParseError('Oversized HTTP response from %s, %s' %
                                          (self.sock, self.address))

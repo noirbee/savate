@@ -43,16 +43,17 @@ class HTTPClient(looping.BaseIOEventHandler):
                                 (self.sock, self.address))
             self.request_buffer = self.request_buffer + tmp_buffer
             self.request_size += len(tmp_buffer)
-        self.request_parser.execute(self.request_buffer)
-        if self.request_parser.has_error():
-            raise HTTPParseError('Invalid HTTP request from %s, %s' %
-                                 (self.sock, self.address))
-        elif self.request_parser.is_finished():
-            # Transform this into the appropriate handler
-            self.transform_request()
-        elif self.request_size >= self.REQUEST_MAX_SIZE:
-            raise HTTPParseError('Oversized HTTP request from %s, %s' %
-                                 (self.sock, self.address))
+            self.request_parser.execute(self.request_buffer)
+            if self.request_parser.has_error():
+                raise HTTPParseError('Invalid HTTP request from %s, %s' %
+                                     (self.sock, self.address))
+            elif self.request_parser.is_finished():
+                # Transform this into the appropriate handler
+                self.transform_request()
+                break
+            elif self.request_size >= self.REQUEST_MAX_SIZE:
+                raise HTTPParseError('Oversized HTTP request from %s, %s' %
+                                     (self.sock, self.address))
 
     def transform_request(self):
         loop = self.server.loop
