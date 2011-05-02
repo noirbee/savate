@@ -19,7 +19,7 @@ with open(options.config_file) as conffile:
 import logging
 logger = logging.getLogger('pycast2')
 handler = logging.FileHandler(conf['log_file'])
-handler.setFormatter(logging.Formatter("%(asctime)s:%(levelname)s:%(name)s: %(message)s"))
+handler.setFormatter(logging.Formatter("%(asctime)s:%(levelname)s:%(name)s(%(process)d): %(message)s"))
 logger.addHandler(handler)
 logger.setLevel(logging.INFO)
 
