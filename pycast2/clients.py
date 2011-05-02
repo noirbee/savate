@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+import os
 try:
     import json
 except ImportError:
@@ -19,6 +20,7 @@ class JSONStatusClient(HTTPEventHandler):
 
     def __init__(self, server, sock, address, request_parser):
         sources_dict = {}
+        total_clients_number = 0
         for path, sources in server.sources.items():
             sources_dict[path] = {}
             for source, source_dict in sources.items():
@@ -26,10 +28,17 @@ class JSONStatusClient(HTTPEventHandler):
                 sources_dict[path][source_address] = {}
                 for fd, client in source_dict['clients'].items():
                     sources_dict[path][source_address][fd] = '%s:%s' % client.address
+                    total_clients_number += 1
+
+        status_dict = {
+            'total_clients_number': total_clients_number,
+            'pid': os.getpid(),
+            'sources': sources_dict,
+            }
 
         HTTPEventHandler.__init__(self, server, sock, address, request_parser,
                                   200, b'OK', {b'Content-Type': 'application/json'},
-                                  json.dumps(sources_dict, indent = 4) + '\n')
+                                  json.dumps(status_dict, indent = 4) + '\n')
 
 class StreamClient(HTTPEventHandler):
 
