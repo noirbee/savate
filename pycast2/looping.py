@@ -54,7 +54,10 @@ class IOLoop(object):
     def once(self, timeout = 0):
         while True:
             try:
-                events_list = self.poller.poll(timeout)
+                # We specify maxevents here, since the default -1
+                # means maxevents will be set to FD_SETSIZE - 1,
+                # i.e. 1023, when calling epoll_wait()
+                events_list = self.poller.poll(timeout, len(self.handlers) or -1)
                 break
             except IOError, exc:
                 if exc.errno == errno.EINTR:
