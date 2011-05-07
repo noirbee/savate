@@ -170,12 +170,14 @@ class TCPServer(looping.BaseIOEventHandler):
     def __init__(self, address, logger = None):
         self.address = address
         self.logger = logger or logging.getLogger('pycast2')
-        self.loop = looping.IOLoop(self.logger)
         self.create_socket(address)
-        self.loop.register(self, looping.POLLIN)
         self.sources = {}
         self.relays = {}
         self.relays_to_restart = collections.deque()
+
+    def create_loop(self):
+        self.loop = looping.IOLoop(self.logger)
+        self.loop.register(self, looping.POLLIN)
 
     def create_socket(self, address):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)

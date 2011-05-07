@@ -32,7 +32,9 @@ import pycast2.relay
 
 server = TCPServer((conf.get('bind', '0.0.0.0'), conf.get('port', 5555)), logger)
 
-logger.info('Serving on %s:%s', *server.address)
+server.create_loop()
+
+logger.info('Serving on %s', server.address)
 
 net_resolve_all = conf.get('net_resolve_all', False)
 
