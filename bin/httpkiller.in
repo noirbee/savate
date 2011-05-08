@@ -1,0 +1,230 @@
+#! /usr/bin/python
+# -*- coding: utf-8 -*-
+
+import socket
+import errno
+import urlparse
+import os
+import cyhttp11
+from pycast2 import helpers
+from pycast2.helpers import HTTPError, HTTPParseError
+from pycast2 import buffer_event
+from pycast2 import looping
+
+TOTAL_BYTES = 0
+
+class HTTPClient(looping.BaseIOEventHandler):
+
+    REQUEST_METHOD = b'GET'
+    HTTP_VERSION = b'HTTP/1.1'
+    RESPONSE_MAX_SIZE = 4096
+    RECV_BUFFER_SIZE = 64 * 2**10
+
+    def __init__(self, loop, url, addr_info = None, http_host = None):
+        self.loop = loop
+        self.url = url
+        self.parsed_url = urlparse.urlparse(url)
+        if addr_info:
+            self.sock = socket.socket(addr_info[0], addr_info[1], addr_info[2])
+            self.host_address = addr_info[4][0]
+            self.host_port = addr_info[4][1]
+        else:
+            self.sock = socket.socket()
+            self.host_address = self.parsed_url.hostname
+            self.host_port = self.parsed_url.port
+
+        if http_host:
+            self.http_host = http_host
+        else:
+            self.http_host = self.parsed_url.hostname
+
+        self.sock.setblocking(0)
+        error = self.sock.connect_ex((self.host_address,
+                                      self.host_port))
+        if error != errno.EINPROGRESS:
+            raise socket.error(error, os.strerror(error))
+        self.handle_event = self.handle_connect
+
+        self.body_length = 0
+        self.content_length = 0
+
+    def handle_connect(self, eventmask):
+        if eventmask & looping.POLLOUT:
+            error = self.sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
+            if error:
+                raise socket.error(error, os.strerror(error))
+            self.address = self.sock.getpeername()
+            # We're connected, prepare to send our request
+            _req = self._build_request()
+            self.output_buffer = buffer_event.BufferOutputHandler(self.sock,
+                                                                  (_req,))
+            self.handle_event = self.handle_request
+            # Immediately try to send some data
+            self.handle_event(eventmask)
+
+    def _build_request(self):
+        # FIXME: URL encoding for the request path
+        # FIXME: params, query and fragments are discarded
+        request_line = b'%s %s %s' % (self.REQUEST_METHOD, self.parsed_url.path,
+                                     self.HTTP_VERSION)
+        # FIXME: should we send some more headers ?
+        headers_lines = helpers.build_http_headers({b'Host': self.http_host}, b'')
+        # FIXME: should we send a body ?
+        return b'\r\n'.join([request_line, headers_lines, b''])
+
+    def handle_request(self, eventmask):
+        if eventmask & looping.POLLOUT:
+            self.output_buffer.flush()
+            if self.output_buffer.empty():
+                # Request sent, switch to HTTP client parsing mode
+                self.loop.register(self, looping.POLLIN)
+                self.response_buffer = b''
+                self.response_size = 0
+                self.response_parser = cyhttp11.HTTPClientParser()
+                self.handle_event = self.handle_response
+
+    def handle_response(self, eventmask):
+        if eventmask & looping.POLLIN:
+            # FIXME: this is basically a c/c from server.py's
+            # HTTPClient's handle_read
+            while True:
+                tmp_buffer = helpers.handle_eagain(self.sock.recv,
+                                                   self.RESPONSE_MAX_SIZE - self.response_size)
+                if tmp_buffer == None:
+                    # EAGAIN, we'll come back later
+                    break
+                elif tmp_buffer == b'':
+                    raise HTTPError('Unexpected end of stream from %s, %s' %
+                                    (self.url,
+                                    (self.sock, self.address)))
+                self.response_buffer = self.response_buffer + tmp_buffer
+                self.response_size += len(tmp_buffer)
+                self.response_parser.execute(self.response_buffer)
+                if self.response_parser.has_error():
+                    raise HTTPParseError('Invalid HTTP response from %s, %s' %
+                                         (self.sock, self.address))
+                elif self.response_parser.is_finished():
+                    global TOTAL_BYTES
+                    self.body_length = len(self.response_parser.body)
+                    TOTAL_BYTES += self.body_length
+                    if 'Content-Length' in self.response_parser.headers:
+                        self.content_length = int(self.response_parser.headers['Content-Length'])
+                    self.handle_event = self.handle_body
+                    self.loop.register(self, looping.POLLIN | looping.POLLET)
+                    break
+                elif self.response_size >= self.RESPONSE_MAX_SIZE:
+                    raise HTTPParseError('Oversized HTTP response from %s, %s' %
+                                         (self.sock, self.address))
+
+    def remaining_nb_bytes(self):
+        return self.content_length - self.body_length
+
+    def handle_body(self, eventmask):
+        global TOTAL_BYTES
+        if eventmask & looping.POLLIN:
+            while True:
+                tmp_buffer = helpers.handle_eagain(self.sock.recv,
+                                                    self.RECV_BUFFER_SIZE)
+                if tmp_buffer == None:
+                    # EAGAIN, we'll come back later
+                    break
+                elif tmp_buffer == b'':
+                    # End of stream
+                    if 'Content-Length' in self.response_parser.headers:
+                        if self.content_length != self.body_length:
+                            raise HTTPError('Unexpected end of stream from %s, %s: Content-Length is %d, real body length is %d' %
+                                            (self.url,
+                                             (self.sock, self.address),
+                                             self.content_length, self.body_length))
+
+                    self.loop.unregister(self)
+                    self.close()
+                    break
+                self.body_length += len(tmp_buffer)
+                TOTAL_BYTES += len(tmp_buffer)
+
+if __name__ == '__main__':
+
+    import sys
+    import time
+    import logging
+    import random
+    import optparse
+    import collections
+    import itertools
+
+    option_parser = optparse.OptionParser()
+    option_parser.add_option('-n', '--num-conns', type = int, default = 500, dest = 'num_conns', help = 'Use NUM maximum connections', metavar = 'NUM')
+    option_parser.add_option('-c', '--concurrent', type = int, default = -1, dest = 'concurrent', help = 'Run NUM connections in parallel', metavar = 'NUM')
+    option_parser.add_option('--update-interval', type = float, default = 1, dest = 'update_interval', help = 'Interval in seconds between statistics output', metavar = 'INTERVAL')
+    option_parser.add_option('--rate', type = int, default = -1, dest = 'rate', help = 'Client connection rate by second')
+    option_parser.add_option('--http-host', dest = 'http_host', help = 'Use HOSTNAME for the HTTP Host: header', metavar = 'HOSTNAME')
+
+    options, urls = option_parser.parse_args()
+
+    if not urls:
+        option_parser.print_help()
+        sys.exit(1)
+
+    if options.concurrent < 0:
+        options.concurrent = options.num_conns
+
+    logger = logging.getLogger('pycast2')
+    handler = logging.FileHandler('/dev/stderr')
+    handler.setFormatter(logging.Formatter("%(asctime)s:%(levelname)s:%(name)s(%(process)d): %(message)s"))
+    logger.addHandler(handler)
+    logger.setLevel(logging.INFO)
+
+    def pretty_size(nb_bytes):
+        units = ['B', 'KB', 'MB', 'GB', 'TB', 'PB']
+        for index, unit in enumerate(units[1:]):
+            if abs(nb_bytes) < 2 ** ((index + 1) * 10):
+                break
+        return '%.2f %s' % (float(nb_bytes) / 2 ** (index * 10), units[index])
+
+    def compute_bandwidth(start_time, end_time, nb_bytes):
+        return pretty_size(nb_bytes / (end_time - start_time))
+
+    ioloop = looping.IOLoop(logger)
+
+    try:
+        targets = []
+        for url in urls:
+            parsed_url = urlparse.urlparse(url)
+            addr_infos = socket.getaddrinfo(parsed_url.hostname,
+                                           parsed_url.port,
+                                           socket.AF_UNSPEC,
+                                           socket.SOCK_STREAM,
+                                           socket.IPPROTO_TCP)
+            targets.extend((url, addr_info, options.http_host) for addr_info in addr_infos)
+            logger.info('Address info for %s is %s', url, addr_infos)
+
+        clients_queue = collections.deque(random.choice(targets) for i in range(options.num_conns))
+
+        last_time = last_step = start_time = time.time()
+
+        while clients_queue or ioloop.handlers:
+            if options.rate > 0:
+                if time.time() - last_step > 1:
+                    tmp_clients_nb = options.rate
+                    last_step = time.time()
+                else:
+                    tmp_clients_nb = 0
+            else:
+                tmp_clients_nb = len(clients_queue)
+
+            tmp_clients_nb = min(options.concurrent - len(ioloop.handlers), tmp_clients_nb)
+
+            for i in range(min(tmp_clients_nb, len(clients_queue))):
+                tmp_client = HTTPClient(ioloop, *clients_queue.popleft())
+                ioloop.register(tmp_client, looping.POLLOUT)
+
+            ioloop.once(1)
+            if time.time() - last_time > options.update_interval:
+                logger.info('Got %s, %d handlers running (%d waiting), %s/s, %s remaining',
+                            pretty_size(TOTAL_BYTES), len(ioloop.handlers), len(clients_queue),
+                            compute_bandwidth(start_time, time.time(), TOTAL_BYTES),
+                            pretty_size(sum(handler.remaining_nb_bytes() for handler in ioloop.handlers.values())))
+                last_time = time.time()
+    finally:
+        logger.info('Got %s', pretty_size(TOTAL_BYTES))

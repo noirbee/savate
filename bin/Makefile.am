@@ -1,4 +1,4 @@
-bin_SCRIPTS = pycast2
+bin_SCRIPTS = pycast2 httpkiller
 
 edit = $(SED) \
 	-e 's|@pycast2sysconfdir[@]|$(pycast2sysconfdir)|g' \
