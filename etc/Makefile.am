@@ -1,1 +1,1 @@
-dist_pycast2sysconf_DATA = pycast2.json
+dist_savatesysconf_DATA = savate.json

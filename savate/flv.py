@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from pycast2.binary_parser import BinaryParser, BinaryParserError
+from savate.binary_parser import BinaryParser, BinaryParserError
 
 class FLVHeader(BinaryParser):
 

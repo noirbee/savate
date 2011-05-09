@@ -7,12 +7,12 @@ import random
 import datetime
 import re
 import cyhttp11
-from pycast2 import looping
-from pycast2 import helpers
-from pycast2.helpers import HTTPError, HTTPParseError
-from pycast2 import clients
-from pycast2 import sources
-from pycast2 import relay
+from savate import looping
+from savate import helpers
+from savate.helpers import HTTPError, HTTPParseError
+from savate import clients
+from savate import sources
+from savate import relay
 
 class HTTPClient(looping.BaseIOEventHandler):
 
@@ -169,7 +169,7 @@ class TCPServer(looping.BaseIOEventHandler):
 
     def __init__(self, address, logger = None):
         self.address = address
-        self.logger = logger or logging.getLogger('pycast2')
+        self.logger = logger or logging.getLogger('savate')
         self.create_socket(address)
         self.sources = {}
         self.relays = {}

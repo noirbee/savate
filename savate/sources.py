@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
-from pycast2 import helpers
-from pycast2 import looping
+from savate import helpers
+from savate import looping
 
 class StreamSource(looping.BaseIOEventHandler):
 
@@ -90,7 +90,7 @@ class MPEGTSSource(FixedPacketSizeSource):
     MPEGTS_PACKET_SIZE = 188
     PACKET_SIZE = MPEGTS_PACKET_SIZE
 
-from pycast2.flv_source import FLVSource
+from savate.flv_source import FLVSource
 
 sources_mapping = {
     b'video/x-flv': FLVSource,

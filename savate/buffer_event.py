@@ -2,7 +2,7 @@
 
 import errno
 import collections
-from pycast2 import writev
+from savate import writev
 
 # FIXME: should this be a method of BufferEvent below ?
 # FIXME: handle Python2.x/Python3k compat here

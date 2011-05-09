@@ -1,7 +1,7 @@
-bin_SCRIPTS = pycast2 httpkiller
+bin_SCRIPTS = savate httpkiller
 
 edit = $(SED) \
-	-e 's|@pycast2sysconfdir[@]|$(pycast2sysconfdir)|g' \
+	-e 's|@savatesysconfdir[@]|$(savatesysconfdir)|g' \
 	-e 's|@pyexecdir[@]|$(pyexecdir)|g' \
         -e 's|@PACKAGE_NAME[@]|$(PACKAGE_NAME)|g' \
 	-e 's|@VERSION[@]|$(VERSION)|g'

@@ -3,7 +3,7 @@
 
 import optparse
 parser = optparse.OptionParser()
-parser.set_defaults(config_file = '@pycast2sysconfdir@/pycast2.json')
+parser.set_defaults(config_file = '@savatesysconfdir@/savate.json')
 parser.add_option('-c', '--config', dest = 'config_file', help = 'JSON configuration file to use', metavar = 'CONFIG')
 
 options, args = parser.parse_args()
@@ -17,7 +17,7 @@ with open(options.config_file) as conffile:
     conf = json.load(conffile)
 
 import logging
-logger = logging.getLogger('pycast2')
+logger = logging.getLogger('savate')
 handler = logging.FileHandler(conf['log_file'])
 handler.setFormatter(logging.Formatter("%(asctime)s:%(levelname)s:%(name)s(%(process)d): %(message)s"))
 logger.addHandler(handler)
@@ -26,9 +26,9 @@ logger.setLevel(logging.INFO)
 import urlparse
 
 import socket
-from pycast2.server import TCPServer
-import pycast2.looping
-import pycast2.relay
+from savate.server import TCPServer
+import savate.looping
+import savate.relay
 
 server = TCPServer((conf.get('bind', '0.0.0.0'), conf.get('port', 5555)), logger)
 

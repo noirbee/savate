@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 
 import collections
-from pycast2.sources import BufferedRawSource, StreamSource
-from pycast2.flv import FLVHeader, FLVTag, FLVAudioData, FLVVideoData
-from pycast2 import looping
-from pycast2 import helpers
+from savate.sources import BufferedRawSource, StreamSource
+from savate.flv import FLVHeader, FLVTag, FLVAudioData, FLVVideoData
+from savate import looping
+from savate import helpers
 
 class FLVSource(BufferedRawSource):
 

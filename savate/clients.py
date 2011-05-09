@@ -6,8 +6,8 @@ try:
 except ImportError:
     import simplejson as json
 import pprint
-from pycast2.helpers import HTTPEventHandler
-from pycast2 import looping
+from savate.helpers import HTTPEventHandler
+from savate import looping
 
 class StatusClient(HTTPEventHandler):
 

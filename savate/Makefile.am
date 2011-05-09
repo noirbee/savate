@@ -15,7 +15,7 @@ pkgpyexec_LTLIBRARIES = writev.la
 writev_la_SOURCES = writev.c
 writev_la_CPPFLAGS = ${AM_CPPFLAGS} ${PYTHON_CPPFLAGS}
 writev_la_CFLAGS = ${AM_CFLAGS} -fno-strict-aliasing
-writev_la_LDFLAGS = -avoid-version -module
+writev_la_LDFLAGS = ${PYTHON_LDFLAGS} -avoid-version -module
 
 EXTRA_DIST = writev.pxd writev.pyx ${BUILT_SOURCES}
 

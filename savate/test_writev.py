@@ -4,7 +4,7 @@
 import os
 import sys
 import unittest
-from pycast2 import writev
+from savate import writev
 
 class TestWritev(unittest.TestCase):
 

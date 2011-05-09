@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.67])
-AC_INIT([pycast2], [0.1.0~dev], [nicolas@noirbent.fr])
+AC_INIT([savate], [0.1.0~dev], [nicolas@noirbent.fr])
 
 AC_CONFIG_HEADERS([config.h])
 
@@ -14,11 +14,11 @@ AC_PROG_LIBTOOL
 AM_PATH_PYTHON
 AC_PYTHON_DEVEL([>= 2.5])
 
-AC_SUBST([pycast2sysconfdir], [\$\(sysconfdir\)/pycast2])
+AC_SUBST([savatesysconfdir], [\$\(sysconfdir\)/savate])
 
 AC_OUTPUT([
 	Makefile
-	pycast2/Makefile
+	savate/Makefile
 	bin/Makefile
 	etc/Makefile
 ])

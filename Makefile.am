@@ -1,1 +1,1 @@
-SUBDIRS = bin etc pycast2
+SUBDIRS = bin etc savate
