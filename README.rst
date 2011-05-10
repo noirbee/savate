@@ -40,7 +40,8 @@ savate builds like your typical autotools-based project::
 Runtime
 -------
 
-You will need `cyhttp11 <http://github.com/cyhttp11>`_ to run savate.
+You will need `cyhttp11 <http://github.com/noirbee/cyhttp11>`_ to run
+savate.
 
 Development
 ===========
