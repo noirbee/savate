@@ -206,8 +206,13 @@ if __name__ == '__main__':
         while clients_queue or ioloop.handlers:
             if options.rate > 0:
                 if time.time() - last_step > 1:
-                    tmp_clients_nb = options.rate
                     last_step = time.time()
+                    if len(ioloop.handlers):
+                        processing_handlers_nb = len([handler for handler in ioloop.handlers.itervalues()
+                                                      if handler.handle_event != handler.handle_body])
+                        tmp_clients_nb = options.rate - processing_handlers_nb
+                    else:
+                        tmp_clients_nb = options.rate
                 else:
                     tmp_clients_nb = 0
             else:
