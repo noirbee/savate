@@ -19,5 +19,5 @@ writev_la_LDFLAGS = ${PYTHON_LDFLAGS} -avoid-version -module
 
 EXTRA_DIST = writev.pxd writev.pyx ${BUILT_SOURCES}
 
-writev.c: Makefile writev.pyx writev.pxd
+writev.c: Makefile.in writev.pyx writev.pxd
 	cython --verbose writev.pyx
