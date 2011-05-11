@@ -1,0 +1,17 @@
+Source: savate
+Priority: optional
+Section: python
+Maintainer: Nicolas Noirbent <nicolas@noirbent.fr>
+Build-Depends: cdbs (>= 0.4.89), debhelper (>= 7), python-all-dev, python-support (>= 0.8)
+Standards-Version: 3.9.2
+XS-Python-Version: >= 2.6
+
+Package: python-savate
+Architecture: any
+Depends: ${misc:Depends}, ${shlibs:Depends}, ${python:Depends}, python-cyhttp11
+Provides: ${python:Provides}
+Breaks: ${python:Breaks}
+XB-Python-Version: ${python:Versions}
+Description: Experimental live audio/video HTTP streaming server
+ This package contains savate, a relatively fast icecast-like live
+ streaming server.

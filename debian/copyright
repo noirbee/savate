@@ -1,0 +1,9 @@
+Format: http://dep.debian.net/deps/dep5/
+Upstream-Name: savate
+Upstream-Contact: Nicolas Noirbent <nicolas@noirbent.fr>
+Source: http://github.com/noirbee/savate
+
+Files: *
+Copyright: Copyright 2011 Nicolas Noirbent <nicolas@noirbent.fr>
+License: AGPL-3+
+ http://www.gnu.org/licenses/agpl-3.0.html
