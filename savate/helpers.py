@@ -55,7 +55,7 @@ class HTTPEventHandler(BaseIOEventHandler):
         self.last_activity = datetime.datetime.now()
 
     def _build_response(self, status, reason, headers, body):
-        status_line = b'HTTP/1.1 %d %s' % (status, reason)
+        status_line = b'HTTP/1.0 %d %s' % (status, reason)
         headers_lines = build_http_headers(headers, body)
         return b'\r\n'.join([status_line, headers_lines, body])
 
