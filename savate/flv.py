@@ -54,6 +54,9 @@ class FLVTag(BinaryParser):
         ('stream_id', '3s', '\x00' * 3),
         )
 
+    def __str__(self):
+        return '<FLVTag type %s, time %d, size %d>' % (self.tag_type, self.timestamp, self.data_size)
+
 class FLVVideoData(BinaryParser):
 
     KEYFRAME = 1
