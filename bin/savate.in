@@ -4,7 +4,7 @@
 import optparse
 parser = optparse.OptionParser()
 parser.set_defaults(config_file = '@savatesysconfdir@/savate.json')
-parser.add_option('-c', '--config', dest = 'config_file', help = 'JSON configuration file to use', metavar = 'CONFIG')
+parser.add_option('-c', '--config', dest = 'config_file', help = 'JSON configuration file to use, default: %default', metavar = 'CONFIG')
 
 options, args = parser.parse_args()
 
