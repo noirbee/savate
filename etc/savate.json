@@ -16,6 +16,12 @@
 	    "source_urls": [
 		"http://example.com:8000/directory/stream2.flv"
 	    ]
-	}
+	},
+        {
+            "path": "/example.ts",
+            "source_urls": [
+                "udp://239.32.0.1:1234"
+            ]
+        }
     ]
 }
