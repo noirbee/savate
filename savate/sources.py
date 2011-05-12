@@ -77,7 +77,7 @@ class FixedPacketSizeSource(BufferedRawSource, StreamSource):
             nb_packets, remaining_bytes = divmod(len(self.output_buffer_data),
                                                  self.PACKET_SIZE)
             if remaining_bytes:
-                tmp_data = self.output_buffer_data[nb_packets * self.PACKET_SIZE:]
+                tmp_data = self.output_buffer_data[:(nb_packets * self.PACKET_SIZE)]
                 self.output_buffer_data = self.output_buffer_data[-remaining_bytes:]
             else:
                 tmp_data = self.output_buffer_data
