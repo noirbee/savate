@@ -169,7 +169,7 @@ if __name__ == '__main__':
     if options.concurrent < 0:
         options.concurrent = options.num_conns
 
-    logger = logging.getLogger('savate')
+    logger = logging.getLogger('httpkiller')
     handler = logging.FileHandler('/dev/stderr')
     handler.setFormatter(logging.Formatter("%(asctime)s:%(levelname)s:%(name)s(%(process)d): %(message)s"))
     logger.addHandler(handler)
