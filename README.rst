@@ -71,7 +71,6 @@ TODO
 * Smarter dead/slow clients detection for FLV streaming. Instead of
   I/O starvation ("x milliseconds without I/O"), check for clients
   that are too late wrt the live stream.
-* UDP multicast input for MPEG2-TS streams.
 * Auth/auth support, preferably through plugins. Probably needs to be
   implemented for sources (PUT/POST/SOURCE) first.
 * True HTTP/1.1; first and foremost, chunked transfer-encoding support

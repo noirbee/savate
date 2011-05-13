@@ -6,13 +6,13 @@ from savate.flv import FLVHeader, FLVTag, FLVAudioData, FLVVideoData
 from savate import looping
 from savate import helpers
 
-class FLVSource(BufferedRawSource):
+class FLVSource(StreamSource):
 
     # Initial burst duration, in milliseconds
     BURST_DURATION = 5 * 1000
 
     def __init__(self, sock, server, address, content_type, request_parser, path = None):
-        BufferedRawSource.__init__(self, sock, server, address, content_type, request_parser, path)
+        StreamSource.__init__(self, sock, server, address, content_type, request_parser, path)
         # Initial buffer data
         self.buffer_data = request_parser.body
         # The FLV stream header
@@ -22,6 +22,8 @@ class FLVSource(BufferedRawSource):
         self.initial_tags = collections.deque()
         # Which type of initial tag we already got
         self.got_initial_meta = self.got_initial_audio = self.got_initial_video = False
+        # Our current packets group
+        self.packets_group = collections.deque()
         # Our current "burst" packets groups list
         self.burst_groups = collections.deque()
         # At startup we want to parse the stream header
@@ -87,13 +89,14 @@ class FLVSource(BufferedRawSource):
         if len(self.buffer_data) >= body_length:
             self.current_tag.body = self.buffer_data[:body_length]
 
-            if not self.check_for_initial_tag(self.current_tag):
-                # Tag is not one of the initial tag, but should we add
-                # it to our burst tags list ?
-                self.add_to_burst_groups(self.current_tag)
+            if self.check_for_initial_tag(self.current_tag):
+                # Tag is one of the initial tag, just publish it
+                self.publish_packet(self.current_tag.raw_data)
+                self.publish_packet(self.current_tag.body)
+            else:
+                # We need to add it to our current packets group
+                self.add_to_packets_group(self.current_tag)
 
-            self.publish_packet(self.current_tag.raw_data)
-            self.publish_packet(self.current_tag.body)
             self.buffer_data = self.buffer_data[body_length:]
             self.handle_data = self.handle_tag
             return True
@@ -125,18 +128,27 @@ class FLVSource(BufferedRawSource):
                 return True
         return False
 
-    def add_to_burst_groups(self, flv_tag):
-        if self.is_sync_point(flv_tag) or len(self.burst_groups) == 0:
-            group = collections.deque((flv_tag,))
-            while ((len(self.burst_groups) >= 2) and
-                   ((flv_tag.timestamp -
-                     self.burst_groups[1][0].timestamp) > self.BURST_DURATION)):
-                # We try to keep the burst data to at most
-                # BURST_DURATION seconds
-                self.burst_groups.popleft()
-            self.burst_groups.append(group)
-        else:
-            self.burst_groups[-1].append(flv_tag)
+    def add_to_packets_group(self, flv_tag):
+        if self.is_sync_point(flv_tag):
+            # Current packets group is over, publish all of its
+            # packets
+            for tag in self.packets_group:
+                self.publish_packet(tag.raw_data)
+                self.publish_packet(tag.body)
+            # And add it to the burst packets groups list
+            self.add_to_burst_groups(self.packets_group)
+            # Reset the current packets group
+            self.packets_group = collections.deque()
+        self.packets_group.append(flv_tag)
+
+    def add_to_burst_groups(self, group):
+        while ((len(self.burst_groups) >= 2) and
+               ((group[0].timestamp -
+                 self.burst_groups[1][0].timestamp) > self.BURST_DURATION)):
+            # We try to keep the burst data to at most
+            # BURST_DURATION seconds
+            self.burst_groups.popleft()
+        self.burst_groups.append(group)
 
     def is_sync_point(self, flv_tag):
         if self.stream_header.video:
