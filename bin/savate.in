@@ -4,7 +4,7 @@
 import optparse
 parser = optparse.OptionParser()
 parser.set_defaults(config_file = '@savatesysconfdir@/savate.json')
-parser.add_option('-c', '--config', dest = 'config_file', help = 'JSON configuration file to use', metavar = 'CONFIG')
+parser.add_option('-c', '--config', dest = 'config_file', help = 'JSON configuration file to use, default: %default', metavar = 'CONFIG')
 
 options, args = parser.parse_args()
 
@@ -25,10 +25,12 @@ logger.setLevel(logging.INFO)
 
 import urlparse
 
+import struct
 import socket
 from savate.server import TCPServer
 import savate.looping
 import savate.relay
+from savate.sources import MPEGTSSource
 
 server = TCPServer((conf.get('bind', '0.0.0.0'), conf.get('port', 5555)), logger)
 
@@ -51,20 +53,39 @@ for relay_conf in conf.get('relays', {}):
     for source_url in relay_conf['source_urls']:
         logger.info('Relaying %s', source_url)
         parsed_url = urlparse.urlparse(source_url)
-        if relay_conf.get('net_resolve_all', net_resolve_all):
-            logger.info('Resolving all IP addresses for %s:%s',
-                        parsed_url.hostname, parsed_url.port)
-            for address_info in socket.getaddrinfo(
-                parsed_url.hostname,
-                parsed_url.port,
-                socket.AF_UNSPEC,
-                socket.SOCK_STREAM,
-                socket.IPPROTO_TCP):
-                logger.info('Trying to relay %s from %s:%s', source_url,
-                            address_info[4][0], address_info[4][1])
-                server.add_relay(server, source_url, path, address_info)
+        if parsed_url.scheme == 'udp':
+            # UDP multicast input
+            # FIXME: we're assuming an MPEG-TS source
+            mcast_address = (parsed_url.hostname, parsed_url.port)
+            mcast_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            mcast_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            mcast_socket.bind(mcast_address)
+            mcast_socket.setblocking(0)
+            mreqn = struct.pack('=4sl', socket.inet_aton(parsed_url.hostname), socket.INADDR_ANY)
+            mcast_socket.setsockopt(socket.SOL_IP, socket.IP_ADD_MEMBERSHIP, mreqn)
+            # mcast_socket is now multicast ready
+
+            mcast_source = MPEGTSSource(server, mcast_socket, mcast_address, b'video/MP2T', None, path)
+            server.sources.setdefault(
+                path,
+                {}
+                )[mcast_source] = {'source': mcast_source, 'clients': {}}
+            server.loop.register(mcast_source, savate.looping.POLLIN)
         else:
-            server.add_relay(server, source_url, path)
+            if relay_conf.get('net_resolve_all', net_resolve_all):
+                logger.info('Resolving all IP addresses for %s:%s',
+                            parsed_url.hostname, parsed_url.port)
+                for address_info in socket.getaddrinfo(
+                    parsed_url.hostname,
+                    parsed_url.port,
+                    socket.AF_UNSPEC,
+                    socket.SOCK_STREAM,
+                    socket.IPPROTO_TCP):
+                    logger.info('Trying to relay %s from %s:%s', source_url,
+                                address_info[4][0], address_info[4][1])
+                    server.add_relay(server, source_url, path, address_info)
+            else:
+                server.add_relay(server, source_url, path)
 
 logger.info('Done setting up relays')
 
