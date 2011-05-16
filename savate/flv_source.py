@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import collections
+import itertools
 from savate.sources import BufferedRawSource, StreamSource
 from savate.flv import FLVHeader, FLVTag, FLVAudioData, FLVVideoData
 from savate import looping
@@ -131,10 +132,12 @@ class FLVSource(StreamSource):
     def add_to_packets_group(self, flv_tag):
         if self.is_sync_point(flv_tag):
             # Current packets group is over, publish all of its
-            # packets
-            for tag in self.packets_group:
-                self.publish_packet(tag.raw_data)
-                self.publish_packet(tag.body)
+            # packets. Even though these will be sent using writev()
+            # further down the pipeline, it seems buffering is needed
+            # to avoid a skyrocketing CPU consumption, hence the
+            # ''.join()
+            self.publish_packet(b''.join(
+                    itertools.chain.from_iterable((tag.raw_data, tag.body) for tag in self.packets_group)))
             # And add it to the burst packets groups list
             self.add_to_burst_groups(self.packets_group)
             # Reset the current packets group
