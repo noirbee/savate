@@ -31,7 +31,7 @@ class BufferOutputHandler(object):
                 total_sent_bytes += sent_bytes
                 if sent_bytes < len(self.buffer_queue[0]):
                     # One of the buffers was partially sent
-                    self.buffer_queue[0] = self.buffer_queue[0][sent_bytes:]
+                    self.buffer_queue[0] = buffer_slice(self.buffer_queue[0], sent_bytes, -1)
                 else:
                     self.buffer_queue.popleft()
         except IOError, exc:
