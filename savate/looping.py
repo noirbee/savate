@@ -4,10 +4,18 @@ import errno
 import select
 import logging
 
-POLLIN = select.EPOLLIN
-POLLOUT = select.EPOLLOUT
-POLLERR = select.EPOLLERR
-POLLHUP = select.EPOLLHUP
+try:
+    Poller = select.epoll
+    POLLIN = select.EPOLLIN
+    POLLOUT = select.EPOLLOUT
+    POLLERR = select.EPOLLERR
+    POLLHUP = select.EPOLLHUP
+except NameError:
+    Poller = select.poll
+    POLLIN = select.POLLIN
+    POLLOUT = select.POLLOUT
+    POLLERR = select.POLLERR
+    POLLHUP = select.POLLHUP
 
 class BaseIOEventHandler(object):
 
@@ -23,7 +31,7 @@ class IOLoop(object):
     DEFAULT_TIMEOUT = 0.5
 
     def __init__(self, logger = None):
-        self.poller = select.epoll()
+        self.poller = Poller()
         self.handlers = {}
         self.injected_events = {}
         self.logger = logger or logging.getLogger('looping')
@@ -55,10 +63,13 @@ class IOLoop(object):
     def once(self, timeout = 0):
         while True:
             try:
-                # We specify maxevents here, since the default -1
-                # means maxevents will be set to FD_SETSIZE - 1,
-                # i.e. 1023, when calling epoll_wait()
-                events_list = self.poller.poll(timeout, len(self.handlers) or -1)
+                if Poller == select.poll:
+                    events_list = self.poller.poll(timeout * 1000)
+                else:
+                    # We specify maxevents here, since the default -1
+                    # means maxevents will be set to FD_SETSIZE - 1,
+                    # i.e. 1023, when calling epoll_wait()
+                    events_list = self.poller.poll(timeout, len(self.handlers) or -1)
                 break
             except IOError, exc:
                 if exc.errno == errno.EINTR:
