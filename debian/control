@@ -2,12 +2,12 @@ Source: savate
 Priority: optional
 Section: python
 Maintainer: Nicolas Noirbent <nicolas@noirbent.fr>
-Build-Depends: cdbs (>= 0.4.89), debhelper (>= 7), python-all-dev, python-support (>= 0.8)
+Build-Depends: cdbs (>= 0.4.89), debhelper (>= 7), python-support (>= 0.8)
 Standards-Version: 3.9.2
 XS-Python-Version: >= 2.6
 
 Package: python-savate
-Architecture: any
+Architecture: all
 Depends: ${misc:Depends}, ${shlibs:Depends}, ${python:Depends}, python-cyhttp11
 Provides: ${python:Provides}
 Breaks: ${python:Breaks}
