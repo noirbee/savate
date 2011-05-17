@@ -5,19 +5,27 @@ import collections
 from savate import writev
 
 # FIXME: should this be a method of BufferEvent below ?
-# FIXME: handle Python2.x/Python3k compat here
-def buffer_slice(buff, offset, size):
-    return buffer(buff, offset, size)
+try:
+    memoryview
+    def make_buffer(data):
+        return memoryview(data)
+    def buffer_slice(buff, offset):
+        return buff[offset:]
+except NameError:
+    def make_buffer(data):
+        return buffer(data)
+    def buffer_slice(buff, offset):
+        return buffer(buff, offset)
 
 class BufferOutputHandler(object):
 
     def __init__(self, sock, initial_buffer_queue = ()):
         self.sock = sock
         self.ready = True
-        self.buffer_queue = collections.deque(initial_buffer_queue)
+        self.buffer_queue = collections.deque(make_buffer(buff) for buff in initial_buffer_queue)
 
     def add_buffer(self, buff):
-        self.buffer_queue.append(buff)
+        self.buffer_queue.append(make_buffer(buff))
 
     def empty(self):
         return len(self.buffer_queue) == 0
@@ -31,7 +39,7 @@ class BufferOutputHandler(object):
                 total_sent_bytes += sent_bytes
                 if sent_bytes < len(self.buffer_queue[0]):
                     # One of the buffers was partially sent
-                    self.buffer_queue[0] = buffer_slice(self.buffer_queue[0], sent_bytes, -1)
+                    self.buffer_queue[0] = buffer_slice(self.buffer_queue[0], sent_bytes)
                 else:
                     self.buffer_queue.popleft()
         except IOError, exc:

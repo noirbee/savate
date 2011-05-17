@@ -63,7 +63,7 @@ class HTTPRelay(looping.BaseIOEventHandler):
         # FIXME: should we send some more headers ?
         headers_lines = helpers.build_http_headers({b'Host': self.parsed_url.hostname}, b'')
         # FIXME: should we send a body ?
-        return b'\r\n'.join([request_line, headers_lines, b''])
+        return bytes(b'\r\n'.join([request_line, headers_lines, b'']))
 
     def handle_request(self, eventmask):
         if eventmask & looping.POLLOUT:
