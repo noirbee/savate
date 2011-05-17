@@ -27,6 +27,8 @@ class FLVSource(StreamSource):
         self.packets_group = collections.deque()
         # Our current "burst" packets groups list
         self.burst_groups = collections.deque()
+        # List of buffers for the "burst" packets
+        self.burst_groups_data = collections.deque()
         # At startup we want to parse the stream header
         self.handle_data = self.handle_header
 
@@ -34,12 +36,9 @@ class FLVSource(StreamSource):
         if self.stream_header:
             client.add_packet(self.stream_header.raw_data)
         for tag in self.initial_tags:
-            client.add_packet(tag.raw_data)
-            client.add_packet(tag.body)
-        for group in self.burst_groups:
-            for tag in group:
-                client.add_packet(tag.raw_data)
-                client.add_packet(tag.body)
+            client.add_packet(tag.raw_data + tag.body)
+        for group_data in self.burst_groups_data:
+            client.add_packet(group_data)
 
     def handle_event(self, eventmask):
         if eventmask & looping.POLLIN:
@@ -151,7 +150,10 @@ class FLVSource(StreamSource):
             # We try to keep the burst data to at most
             # BURST_DURATION seconds
             self.burst_groups.popleft()
+            self.burst_groups_data.popleft()
         self.burst_groups.append(group)
+        self.burst_groups_data.append(b''.join(
+                itertools.chain.from_iterable((tag.raw_data, tag.body) for tag in group)))
 
     def is_sync_point(self, flv_tag):
         if self.stream_header.video:
