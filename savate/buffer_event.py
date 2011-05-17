@@ -27,15 +27,13 @@ class BufferOutputHandler(object):
         total_sent_bytes = 0
         try:
             while self.buffer_queue:
-                sent_bytes = writev.writev(self.sock.fileno(),
-                                             self.buffer_queue)
+                sent_bytes = self.sock.send(self.buffer_queue[0])
                 total_sent_bytes += sent_bytes
-                while (self.buffer_queue and sent_bytes and
-                       len(self.buffer_queue[0]) <= sent_bytes):
-                    sent_bytes -= len(self.buffer_queue.popleft())
-                if sent_bytes:
+                if sent_bytes < len(self.buffer_queue[0]):
                     # One of the buffers was partially sent
                     self.buffer_queue[0] = self.buffer_queue[0][sent_bytes:]
+                else:
+                    self.buffer_queue.popleft()
         except IOError, exc:
             if exc.errno == errno.EAGAIN:
                 self.ready = False
