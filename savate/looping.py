@@ -6,7 +6,6 @@ import logging
 
 POLLIN = select.EPOLLIN
 POLLOUT = select.EPOLLOUT
-POLLET = select.EPOLLET
 POLLERR = select.EPOLLERR
 POLLHUP = select.EPOLLHUP
 

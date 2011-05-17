@@ -7,7 +7,7 @@ import urlparse
 import os
 import cyhttp11
 from savate import helpers
-from savate.helpers import HTTPError, HTTPParseError
+from savate.helpers import HTTPError, HTTPParseError, event_mask_str
 from savate import buffer_event
 from savate import looping
 
@@ -110,7 +110,7 @@ class HTTPClient(looping.BaseIOEventHandler):
                     if 'Content-Length' in self.response_parser.headers:
                         self.content_length = int(self.response_parser.headers['Content-Length'])
                     self.handle_event = self.handle_body
-                    self.loop.register(self, looping.POLLIN | looping.POLLET)
+                    self.loop.register(self, looping.POLLIN)
                     break
                 elif self.response_size >= self.RESPONSE_MAX_SIZE:
                     raise HTTPParseError('Oversized HTTP response from %s, %s' %
@@ -142,6 +142,11 @@ class HTTPClient(looping.BaseIOEventHandler):
                     break
                 self.body_length += len(tmp_buffer)
                 TOTAL_BYTES += len(tmp_buffer)
+        elif eventmask & (looping.POLLERR | looping.POLLHUP):
+            self.loop.unregister(self)
+            self.close()
+        else:
+            self.server.logger.error('%s: unexpected eventmask %d (%s)', self, eventmask, event_mask_str(eventmask))
 
 if __name__ == '__main__':
 

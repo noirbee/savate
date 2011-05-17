@@ -134,7 +134,7 @@ class HTTPClient(looping.BaseIOEventHandler):
                     # FIXME: see above wrt to proper source selection
                     self.server.sources[path][source]['clients'][new_client.fileno()] = new_client
                     loop.register(new_client,
-                                  looping.POLLOUT | looping.POLLET)
+                                  looping.POLLOUT)
                 else:
                     # Stream does not exist
                     loop.register(helpers.HTTPEventHandler(self.server,
