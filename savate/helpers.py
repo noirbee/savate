@@ -35,6 +35,11 @@ def build_http_headers(headers, body):
     return b''.join(b'%s: %s\r\n' % (key, value) for key, value
                     in default_headers.items() if value != None)
 
+def event_mask_str(event_mask):
+    masks_list = ('POLLIN', 'POLLOUT', 'POLLERR', 'POLLHUP')
+    return '|'.join(mask for mask in masks_list if
+                    event_mask & getattr(looping, mask))
+
 class HTTPError(Exception):
     pass
 class HTTPParseError(HTTPError):
