@@ -6,6 +6,7 @@ import collections
 import random
 import datetime
 import re
+import itertools
 import cyhttp11
 from savate import looping
 from savate import helpers
@@ -214,10 +215,20 @@ class TCPServer(looping.BaseIOEventHandler):
 
     def remove_source(self, source):
         # FIXME: client shutdown
-        for client in self.sources[source.path][source]['clients'].values():
-            client.close()
+        if len(self.sources[source.path]) > 1:
+            # There is at least one other source for this path,
+            # migrate the clients to it
+            tmp_source = self.sources[source.path].pop(source)
+            # Simple even distribution amongst the remaining sources
+            for client, new_source in itertools.izip(tmp_source['clients'].values(),
+                                                     itertools.cycle(self.sources[source.path].keys())):
+                client.source = new_source
+                self.sources[source.path][new_source]['clients'][client.fileno()] = client
+        else:
+            for client in self.sources[source.path][source]['clients'].values():
+                client.close()
+            del self.sources[source.path][source]
         self.loop.unregister(source)
-        del self.sources[source.path][source]
         self.check_for_relay_restart(source)
 
     def remove_client(self, client):
