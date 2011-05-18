@@ -78,3 +78,7 @@ TODO
 * Free/open formats support: Ogg/Vorbis/Theora/WebM.
 * Raw AAC support. Note that savate already supports AAC-only FLV
   streams.
+* File fallback on source takedown / failure.
+* On-demand relaying.
+* Master / slave operation, where a slave savate instance will
+  re-stream its master(s)'s streams.
