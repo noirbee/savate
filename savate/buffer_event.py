@@ -2,7 +2,6 @@
 
 import errno
 import collections
-from savate import writev
 
 # FIXME: should this be a method of BufferEvent below ?
 try:
