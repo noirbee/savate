@@ -81,7 +81,7 @@ class IOLoop(object):
                 handler = self.handlers[fd]
             except KeyError, exc:
                 # There's a bug somewhere. Could be epoll, could be us.
-                self.logger.error('fd %d returned by epoll() is not in self.handlers !')
+                self.logger.error('fd %d returned by epoll() is not in self.handlers !', fd)
                 try:
                     self.poller.unregister(fd)
                 except:
