@@ -168,8 +168,9 @@ class TCPServer(looping.BaseIOEventHandler):
     # Maximum I/O inactivity timeout, in milliseconds
     INACTIVITY_TIMEOUT = 10 * 1000
 
-    def __init__(self, address, logger = None):
+    def __init__(self, address, config, logger = None):
         self.address = address
+        self.config = config
         self.logger = logger or logging.getLogger('savate')
         self.create_socket(address)
         self.sources = {}
