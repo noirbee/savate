@@ -1,5 +1,6 @@
 pkgpyexec_PYTHON = \
 	__init__.py \
+	auth.py \
 	binary_parser.py \
 	buffer_event.py \
 	clients.py \

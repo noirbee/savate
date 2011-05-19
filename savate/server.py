@@ -73,6 +73,29 @@ class HTTPClient(looping.BaseIOEventHandler):
                                                   self.request_parser.request_path)
         path = self.request_parser.request_path
 
+        # Authorization
+        for auth_handler in self.server.auth_handlers:
+            auth_result = auth_handler.authorize(self.address, self.request_parser)
+            if auth_result == True:
+                # Request authorized
+                break
+            elif auth_result == False:
+                # Access denied
+                loop.register(helpers.HTTPEventHandler(self.server,
+                                                       self.sock,
+                                                       self.address,
+                                                       self.request_parser,
+                                                       403,
+                                                       b'Forbidden'),
+                              looping.POLLOUT)
+                return
+            elif auth_result == None:
+                # Move on to next handler
+                continue
+            else:
+                # Wrong response from auth handler
+                raise RuntimeError('Wrong response from authorization handler %s' % auth_handler)
+
         if self.request_parser.request_method in [b'PUT', b'SOURCE', b'POST']:
             # New source
             content_type = self.request_parser.headers.get('Content-Type',
@@ -176,6 +199,7 @@ class TCPServer(looping.BaseIOEventHandler):
         self.sources = {}
         self.relays = {}
         self.relays_to_restart = collections.deque()
+        self.auth_handlers = []
 
     def create_loop(self):
         self.loop = looping.IOLoop(self.logger)
@@ -201,6 +225,9 @@ class TCPServer(looping.BaseIOEventHandler):
         tmp_relay = relay.HTTPRelay(*relay_args)
         self.relays[tmp_relay.sock] = relay_args
         self.loop.register(tmp_relay, looping.POLLOUT)
+
+    def add_auth_handler(self, handler):
+        self.auth_handlers.append(handler)
 
     def check_for_timeout(self, last_activity):
         if ((datetime.datetime.now() - last_activity) >

@@ -9,13 +9,17 @@
             "path": "/example/stream.flv",
             "source_urls": [
                 "http://example.com:80/stream.flv"
-            ]
+            ],
+            "source_user": "other_user",
+            "source_password": "other_password"
         },
 	{
 	    "path": "/example2.flv",
 	    "source_urls": [
 		"http://example.com:8000/directory/stream2.flv"
-	    ]
+	    ],
+            "user": "client_username",
+            "password": "client_password"
 	},
         {
             "path": "/multicast.ts",
@@ -28,6 +32,15 @@
             "source_urls": [
                 "udp://0.0.0.0:6666"
             ]
+        }
+    ],
+    "auth": [
+        {
+            "handler": "savate.auth.BasicAuthorization",
+            "source_user": "source",
+            "source_password": "changeme",
+            "user": "username",
+            "password": "password"
         }
     ]
 }

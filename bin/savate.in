@@ -88,6 +88,14 @@ for mount_conf in conf.get('mounts', {}):
             else:
                 server.add_relay(server, source_url, path)
 
+for auth_handler in conf.get('auth', []):
+    handler_name = auth_handler['handler']
+    handler_module, handler_class = handler_name.rsplit('.', 1)
+    handler_module = __import__(handler_module, {}, {}, [''])
+    handler_class = getattr(handler_module, handler_class)
+    handler_instance = handler_class(server, conf, **auth_handler)
+    server.add_auth_handler(handler_instance)
+
 logger.info('Done setting up relays')
 
 logger.info('Starting main loop')
