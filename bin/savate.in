@@ -48,6 +48,8 @@ logger.info('Serving on %s', server.address)
 net_resolve_all = conf.get('net_resolve_all', False)
 
 for mount_conf in conf.get('mounts', {}):
+    if 'source_urls' not in mount_conf:
+        continue
     logger.info('Setting up relays for %s', mount_conf['path'])
     path = mount_conf['path']
     for source_url in mount_conf['source_urls']:
