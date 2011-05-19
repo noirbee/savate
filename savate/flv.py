@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from savate.binary_parser import BinaryParser, BinaryParserError
+from savate.binary_parser import BinaryParser
 
 class FLVHeader(BinaryParser):
 
