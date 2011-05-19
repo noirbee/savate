@@ -47,10 +47,10 @@ logger.info('Serving on %s', server.address)
 
 net_resolve_all = conf.get('net_resolve_all', False)
 
-for relay_conf in conf.get('relays', {}):
-    logger.info('Setting up relays for %s', relay_conf['path'])
-    path = relay_conf['path']
-    for source_url in relay_conf['source_urls']:
+for mount_conf in conf.get('mounts', {}):
+    logger.info('Setting up relays for %s', mount_conf['path'])
+    path = mount_conf['path']
+    for source_url in mount_conf['source_urls']:
         logger.info('Relaying %s', source_url)
         parsed_url = urlparse.urlparse(source_url)
         if parsed_url.scheme in ('udp', 'multicast'):
@@ -73,7 +73,7 @@ for relay_conf in conf.get('relays', {}):
                 )[udp_source] = {'source': udp_source, 'clients': {}}
             server.loop.register(udp_source, savate.looping.POLLIN)
         else:
-            if relay_conf.get('net_resolve_all', net_resolve_all):
+            if mount_conf.get('net_resolve_all', net_resolve_all):
                 logger.info('Resolving all IP addresses for %s:%s',
                             parsed_url.hostname, parsed_url.port)
                 for address_info in socket.getaddrinfo(

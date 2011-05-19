@@ -3,7 +3,7 @@
     "port": 5555,
     "log_file": "/dev/stderr",
     "net_resolve_all": false,
-    "relays": [
+    "mounts": [
         {
 	    "net_resolve_all": true,
             "path": "/example/stream.flv",
