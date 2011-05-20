@@ -83,3 +83,4 @@ TODO
 * On-demand relaying.
 * Master / slave operation, where a slave savate instance will
   re-stream its master(s)'s streams.
+* Multi-process / multi-thread operation.

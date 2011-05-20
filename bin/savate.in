@@ -34,13 +34,6 @@ from savate.sources import MPEGTSSource
 
 server = TCPServer((conf.get('bind', '0.0.0.0'), conf.get('port', 8000)), conf, logger)
 
-if conf.get('fork', False):
-    import os
-    for i in range(conf.get('fork_number', os.sysconf('SC_NPROCESSORS_ONLN'))):
-        if not os.fork():
-            # Child process, stop here
-            break
-
 server.create_loop()
 
 logger.info('Serving on %s', server.address)
