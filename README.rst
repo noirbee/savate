@@ -71,6 +71,9 @@ TODO
 * Smarter dead/slow clients detection for FLV streaming. Instead of
   I/O starvation ("x milliseconds without I/O"), check for clients
   that are too late wrt the live stream.
+* Proper (wrt HTTP/1.1) handling of authorization failures (we
+  systematically send a 403). We most likely need authorization to be
+  able to send back customised HTTP responses.
 * True HTTP/1.1; first and foremost, chunked transfer-encoding support
   for sources.
 * Free/open formats support: Ogg/Vorbis/Theora/WebM.
