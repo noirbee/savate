@@ -32,7 +32,7 @@ import savate.looping
 import savate.relay
 from savate.sources import MPEGTSSource
 
-server = TCPServer((conf.get('bind', '0.0.0.0'), conf.get('port', 5555)), conf, logger)
+server = TCPServer((conf.get('bind', '0.0.0.0'), conf.get('port', 8000)), conf, logger)
 
 if conf.get('fork', False):
     import os
