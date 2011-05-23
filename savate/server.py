@@ -7,6 +7,7 @@ import random
 import datetime
 import re
 import itertools
+import errno
 import cyhttp11
 from savate import looping
 from savate import helpers
@@ -214,7 +215,24 @@ class TCPServer(looping.BaseIOEventHandler):
 
     def handle_event(self, eventmask):
         if eventmask & looping.POLLIN:
-            helpers.loop_for_eagain(self.handle_new_incoming)
+            try:
+                helpers.loop_for_eagain(self.handle_new_incoming)
+            except IOError, exc:
+                if exc.errno in (errno.EMFILE, errno.ENFILE):
+                    # Too many open files
+                    self.logger.error('Cannot accept, too many open files')
+                    # Try to close() and re-open our listening socket,
+                    # since there is no other way to clear the backlog
+                    # FIXME: remove from poller object, and try to
+                    # re-add it later ? Do not try to accept() once
+                    # we've reached the open file descriptors / max
+                    # clients limit ?
+                    self.loop.unregister(self)
+                    self.close()
+                    self.create_socket()
+                    self.loop.register(self, looping.POLLIN)
+                else:
+                    raise
 
     def handle_new_incoming(self):
         client_socket, client_address = self.sock.accept()
