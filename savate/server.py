@@ -200,6 +200,7 @@ class TCPServer(looping.BaseIOEventHandler):
         self.relays = {}
         self.relays_to_restart = collections.deque()
         self.auth_handlers = []
+        self.running = True
 
     def create_loop(self):
         self.loop = looping.IOLoop(self.logger)
@@ -272,8 +273,15 @@ class TCPServer(looping.BaseIOEventHandler):
             self.loop.inject_event(client.fileno(), looping.POLLOUT)
 
     def serve_forever(self):
-        while True:
+        while self.running:
             self.loop.once(self.LOOP_TIMEOUT)
             while self.relays_to_restart:
                 self.logger.info('Restarting relay %s', self.relays_to_restart[0])
                 self.add_relay(*self.relays_to_restart.popleft())
+        # FIXME: we should probably close() every source/client and
+        # the server instance itself
+        self.logger.info('Shutting down')
+
+    def stop(self):
+        self.logger.info('Stopping main loop')
+        self.running = False
