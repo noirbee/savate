@@ -1,7 +1,7 @@
 {
     "bind": "0.0.0.0",
     "port": 8000,
-    "log_file": "/dev/stderr",
+    "log_file": "/var/log/savate/savate.log",
     "net_resolve_all": false,
     "mounts": [
         {
