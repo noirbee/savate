@@ -1,0 +1,8 @@
+/var/log/savate/*.log {
+	daily
+	missingok
+	rotate 30
+	copytruncate
+	compress
+	notifempty
+}
