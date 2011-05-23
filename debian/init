@@ -69,6 +69,9 @@ do_start()
 	start-stop-daemon --start --quiet --pidfile $PIDFILE --name $NAME --startas $DAEMON --test > /dev/null \
 		|| return 1
 
+        # FIXME: this should be handled inside savate with setrlimit()
+        ulimit -SH -n 10000
+
         # Really start the daemon now
 	start-stop-daemon --start --quiet --pidfile $PIDFILE --name $NAME --startas $DAEMON -- \
 		$DAEMON_ARGS \
