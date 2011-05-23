@@ -3,6 +3,7 @@
 import errno
 import collections
 import datetime
+import signal
 from savate import looping
 from savate.looping import BaseIOEventHandler
 from savate import buffer_event
@@ -39,6 +40,13 @@ def event_mask_str(event_mask):
     masks_list = ('POLLIN', 'POLLOUT', 'POLLERR', 'POLLHUP')
     return '|'.join(mask for mask in masks_list if
                     event_mask & getattr(looping, mask))
+
+def find_signal_str(signum):
+    signal_strings = (sig_str for sig_str in dir(signal) if sig_str.startswith('SIG'))
+    for signal_string in signal_strings:
+        if getattr(signal, signal_string) == signum:
+            return signal_string
+    return ''
 
 class HTTPError(Exception):
     pass

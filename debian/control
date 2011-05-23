@@ -8,7 +8,7 @@ XS-Python-Version: >= 2.6
 
 Package: savate
 Architecture: all
-Depends: ${misc:Depends}, ${shlibs:Depends}, ${python:Depends}, python-cyhttp11
+Depends: ${misc:Depends}, ${shlibs:Depends}, ${python:Depends}, python-cyhttp11, python-daemon
 Provides: ${python:Provides}
 Breaks: ${python:Breaks}
 XB-Python-Version: ${python:Versions}

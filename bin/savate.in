@@ -6,9 +6,13 @@ parser = optparse.OptionParser()
 parser.set_defaults(
     config_file = '@savatesysconfdir@/savate.json',
     log_file = '@localstatedir@/log/savate/savate.log',
+    pid_file = '@localstatedir@/run/savate/savate.pid',
     )
 parser.add_option('-c', '--config', dest = 'config_file', help = 'JSON configuration file to use, default: %default', metavar = 'CONFIG')
 parser.add_option('-l', '--logfile', dest = 'log_file', help = 'log file to use, default: %default', metavar = 'LOGFILE')
+parser.add_option('-p', '--pidfile', dest = 'pid_file', help = 'PID file to use, default: %default', metavar = 'PIDFILE')
+parser.add_option('--background', dest = 'background', action = 'store_true', help = 'Run in the background, daemonise (default)')
+parser.add_option('--foreground', dest = 'background', action = 'store_false', help = 'Run in the foreground, do not daemonise')
 
 options, args = parser.parse_args()
 
@@ -27,76 +31,101 @@ handler.setFormatter(logging.Formatter("%(asctime)s:%(levelname)s:%(name)s(%(pro
 logger.addHandler(handler)
 logger.setLevel(logging.INFO)
 
-import urlparse
-
-import struct
-import socket
 from savate.server import TCPServer
-import savate.looping
-import savate.relay
-from savate.sources import MPEGTSSource
 
 server = TCPServer((conf.get('bind', '0.0.0.0'), conf.get('port', 8000)), conf, logger)
 
-server.create_socket()
-server.create_loop()
+import signal
+import sys
+from daemon import DaemonContext
+from daemon.daemon import redirect_stream
+from daemon.pidlockfile import TimeoutPIDLockFile
 
-logger.info('Serving on %s', server.address)
+daemon_context = DaemonContext(
+    detach_process = options.background,
+    pidfile = TimeoutPIDLockFile(conf.get('pid_file', options.pid_file), acquire_timeout = -1),
+    files_preserve = [handler.stream],
+    # We want to keep stderr around so users can diagnose what is
+    # hindering daemonisation
+    stderr = sys.stderr,
+    )
 
-net_resolve_all = conf.get('net_resolve_all', False)
+daemon_context.signal_map = {
+    signal.SIGTERM: server.signal,
+    signal.SIGINT: server.signal,
+    }
 
-for mount_conf in conf.get('mounts', {}):
-    if 'source_urls' not in mount_conf:
-        continue
-    logger.info('Setting up relays for %s', mount_conf['path'])
-    path = mount_conf['path']
-    for source_url in mount_conf['source_urls']:
-        logger.info('Relaying %s', source_url)
-        parsed_url = urlparse.urlparse(source_url)
-        if parsed_url.scheme in ('udp', 'multicast'):
-            # UDP multicast input
-            # FIXME: we're assuming an MPEG-TS source
-            udp_address = (parsed_url.hostname, parsed_url.port)
-            udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            udp_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-            udp_socket.bind(udp_address)
-            udp_socket.setblocking(0)
-            if parsed_url.scheme == 'multicast':
-                multicast_request = struct.pack('=4sl', socket.inet_aton(parsed_url.hostname), socket.INADDR_ANY)
-                udp_socket.setsockopt(socket.SOL_IP, socket.IP_ADD_MEMBERSHIP, multicast_request)
-                # udp_socket is now multicast ready
+with daemon_context:
+    # We're daemonised now, close stderr
+    if daemon_context.detach_process:
+        redirect_stream(sys.stderr, None)
 
-            udp_source = MPEGTSSource(server, udp_socket, udp_address, b'video/MP2T', None, path)
-            server.sources.setdefault(
-                path,
-                {}
-                )[udp_source] = {'source': udp_source, 'clients': {}}
-            server.loop.register(udp_source, savate.looping.POLLIN)
-        else:
-            if mount_conf.get('net_resolve_all', net_resolve_all):
-                logger.info('Resolving all IP addresses for %s:%s',
-                            parsed_url.hostname, parsed_url.port)
-                for address_info in socket.getaddrinfo(
-                    parsed_url.hostname,
-                    parsed_url.port,
-                    socket.AF_UNSPEC,
-                    socket.SOCK_STREAM,
-                    socket.IPPROTO_TCP):
-                    logger.info('Trying to relay %s from %s:%s', source_url,
-                                address_info[4][0], address_info[4][1])
-                    server.add_relay(server, source_url, path, address_info)
+    import urlparse
+    import struct
+    import socket
+    import savate.looping
+    import savate.relay
+    from savate.sources import MPEGTSSource
+
+    server.create_socket()
+    server.create_loop()
+
+    logger.info('Serving on %s', server.address)
+
+    net_resolve_all = conf.get('net_resolve_all', False)
+
+    for mount_conf in conf.get('mounts', {}):
+        if 'source_urls' not in mount_conf:
+            continue
+        logger.info('Setting up relays for %s', mount_conf['path'])
+        path = mount_conf['path']
+        for source_url in mount_conf['source_urls']:
+            logger.info('Relaying %s', source_url)
+            parsed_url = urlparse.urlparse(source_url)
+            if parsed_url.scheme in ('udp', 'multicast'):
+                # UDP multicast input
+                # FIXME: we're assuming an MPEG-TS source
+                udp_address = (parsed_url.hostname, parsed_url.port)
+                udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                udp_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                udp_socket.bind(udp_address)
+                udp_socket.setblocking(0)
+                if parsed_url.scheme == 'multicast':
+                    multicast_request = struct.pack('=4sl', socket.inet_aton(parsed_url.hostname), socket.INADDR_ANY)
+                    udp_socket.setsockopt(socket.SOL_IP, socket.IP_ADD_MEMBERSHIP, multicast_request)
+                    # udp_socket is now multicast ready
+
+                udp_source = MPEGTSSource(server, udp_socket, udp_address, b'video/MP2T', None, path)
+                server.sources.setdefault(
+                    path,
+                    {}
+                    )[udp_source] = {'source': udp_source, 'clients': {}}
+                server.loop.register(udp_source, savate.looping.POLLIN)
             else:
-                server.add_relay(server, source_url, path)
+                if mount_conf.get('net_resolve_all', net_resolve_all):
+                    logger.info('Resolving all IP addresses for %s:%s',
+                                parsed_url.hostname, parsed_url.port)
+                    for address_info in socket.getaddrinfo(
+                        parsed_url.hostname,
+                        parsed_url.port,
+                        socket.AF_UNSPEC,
+                        socket.SOCK_STREAM,
+                        socket.IPPROTO_TCP):
+                        logger.info('Trying to relay %s from %s:%s', source_url,
+                                    address_info[4][0], address_info[4][1])
+                        server.add_relay(server, source_url, path, address_info)
+                else:
+                    server.add_relay(server, source_url, path)
 
-for auth_handler in conf.get('auth', []):
-    handler_name = auth_handler['handler']
-    handler_module, handler_class = handler_name.rsplit('.', 1)
-    handler_module = __import__(handler_module, {}, {}, [''])
-    handler_class = getattr(handler_module, handler_class)
-    handler_instance = handler_class(server, conf, **auth_handler)
-    server.add_auth_handler(handler_instance)
+    for auth_handler in conf.get('auth', []):
+        handler_name = auth_handler['handler']
+        handler_module, handler_class = handler_name.rsplit('.', 1)
+        handler_module = __import__(handler_module, {}, {}, [''])
+        handler_class = getattr(handler_module, handler_class)
+        handler_instance = handler_class(server, conf, **auth_handler)
+        server.add_auth_handler(handler_instance)
 
-logger.info('Done setting up relays')
+    logger.info('Done setting up relays')
 
-logger.info('Starting main loop')
-server.serve_forever()
+    logger.info('Starting main loop')
+    server.serve_forever()

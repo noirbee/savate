@@ -10,7 +10,7 @@ import itertools
 import cyhttp11
 from savate import looping
 from savate import helpers
-from savate.helpers import HTTPError, HTTPParseError
+from savate.helpers import HTTPError, HTTPParseError, find_signal_str
 from savate import clients
 from savate import sources
 from savate import relay
@@ -284,3 +284,7 @@ class TCPServer(looping.BaseIOEventHandler):
     def stop(self):
         self.logger.info('Stopping main loop')
         self.running = False
+
+    def signal(self, signum, _frame):
+        self.logger.info('Received signal %s', find_signal_str(signum))
+        self.stop()

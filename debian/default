@@ -1,0 +1,14 @@
+# Defaults for savate initscript
+# sourced by /etc/init.d/savate
+# installed at /etc/default/savate by the maintainer scripts
+
+#
+# This is a POSIX shell fragment
+#
+
+# Should we start savate from init.d ?
+# Change this to true to enable it
+ENABLED=false
+
+# Additional runtime options
+DAEMON_ARGS=""
