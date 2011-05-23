@@ -195,7 +195,6 @@ class TCPServer(looping.BaseIOEventHandler):
         self.address = address
         self.config = config
         self.logger = logger or logging.getLogger('savate')
-        self.create_socket(address)
         self.sources = {}
         self.relays = {}
         self.relays_to_restart = collections.deque()
@@ -206,10 +205,10 @@ class TCPServer(looping.BaseIOEventHandler):
         self.loop = looping.IOLoop(self.logger)
         self.loop.register(self, looping.POLLIN)
 
-    def create_socket(self, address):
+    def create_socket(self):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        self.sock.bind(address)
+        self.sock.bind(self.address)
         self.sock.listen(self.BACKLOG)
         self.sock.setblocking(0)
 

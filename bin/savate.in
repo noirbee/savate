@@ -38,6 +38,7 @@ from savate.sources import MPEGTSSource
 
 server = TCPServer((conf.get('bind', '0.0.0.0'), conf.get('port', 8000)), conf, logger)
 
+server.create_socket()
 server.create_loop()
 
 logger.info('Serving on %s', server.address)
