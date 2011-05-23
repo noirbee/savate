@@ -3,6 +3,7 @@ bin_SCRIPTS = savate httpkiller
 edit = $(SED) \
 	-e 's|@savatesysconfdir[@]|$(savatesysconfdir)|g' \
 	-e 's|@pyexecdir[@]|$(pyexecdir)|g' \
+	-e 's|@localstatedir[@]|$(localstatedir)|g' \
 	-e 's|@PACKAGE_NAME[@]|$(PACKAGE_NAME)|g' \
 	-e 's|@VERSION[@]|$(VERSION)|g'
 
