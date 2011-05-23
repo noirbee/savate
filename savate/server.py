@@ -5,6 +5,7 @@ import logging
 import collections
 import random
 import datetime
+import time
 import re
 import itertools
 import errno
@@ -192,6 +193,8 @@ class TCPServer(looping.BaseIOEventHandler):
     # Maximum I/O inactivity timeout, in milliseconds
     INACTIVITY_TIMEOUT = 10 * 1000
 
+    RESTART_DELAY = 1
+
     def __init__(self, address, config, logger = None):
         self.address = address
         self.config = config
@@ -257,7 +260,10 @@ class TCPServer(looping.BaseIOEventHandler):
     def check_for_relay_restart(self, handler):
         # If this is one of our relays, mark it for restart
         if handler.sock in self.relays:
-            self.relays_to_restart.append(self.relays.pop(handler.sock))
+            # It will be restarted in one second from now
+            # FIXME: use real timers
+            self.relays_to_restart.append((time.time() + self.RESTART_DELAY,
+                                           self.relays.pop(handler.sock)))
 
     def remove_source(self, source):
         # FIXME: client shutdown
@@ -292,9 +298,10 @@ class TCPServer(looping.BaseIOEventHandler):
     def serve_forever(self):
         while self.running:
             self.loop.once(self.LOOP_TIMEOUT)
-            while self.relays_to_restart:
-                self.logger.info('Restarting relay %s', self.relays_to_restart[0])
-                self.add_relay(*self.relays_to_restart.popleft())
+            while (self.relays_to_restart and
+                   self.relays_to_restart[0][0] < time.time()):
+                self.logger.info('Restarting relay %s', self.relays_to_restart[0][1])
+                self.add_relay(*(self.relays_to_restart.popleft()[1]))
         # FIXME: we should probably close() every source/client and
         # the server instance itself
         self.logger.info('Shutting down')
