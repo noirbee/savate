@@ -56,7 +56,6 @@ version 1.10.0 is more up to date than 1.10.0~dev).
 TODO
 ====
 
-* Proper daemonisation support.
 * savate currently uses an homemade epoll-based I/O event loop. While
   it does the job, it is (obviously) lacking some nice features from a
   dedicated event loop (most notably timers and a wider platform
