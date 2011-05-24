@@ -49,6 +49,10 @@
         },
         "/status.json": {
             "handler": "savate.status.JSONStatusClient"
+        },
+        "/status.static": {
+            "handler": "savate.status.StaticFileStatusClient",
+            "static_file": "/etc/savate/status.static"
         }
     }
 }
