@@ -126,22 +126,13 @@ class HTTPClient(looping.BaseIOEventHandler):
                               looping.POLLOUT)
         elif self.request_parser.request_method in [b'GET']:
             # New client
-            if path in [b'/status']:
-                # Deliver server status
-                loop.register(clients.StatusClient(self.server,
-                                                   self.sock,
-                                                   self.address,
-                                                   self.request_parser),
-                              looping.POLLOUT)
 
-            elif path in [b'/status.json']:
-                # Deliver server status, JSON version
-                loop.register(clients.JSONStatusClient(self.server,
-                                                       self.sock,
-                                                       self.address,
-                                                       self.request_parser),
+            # Is our client asking for status ?
+            if path in self.server.status_handlers:
+                loop.register(self.server.status_handlers[path].get_status(self.sock,
+                                                                           self.address,
+                                                                           self.request_parser),
                               looping.POLLOUT)
-
             else:
                 # New client for one of our sources
                 if self.server.sources.get(path, []):
@@ -207,6 +198,7 @@ class TCPServer(looping.BaseIOEventHandler):
         self.relays = {}
         self.relays_to_restart = collections.deque()
         self.auth_handlers = []
+        self.status_handlers = {}
         self.state = self.STATE_RUNNING
 
     def create_loop(self):
@@ -253,6 +245,9 @@ class TCPServer(looping.BaseIOEventHandler):
 
     def add_auth_handler(self, handler):
         self.auth_handlers.append(handler)
+
+    def add_status_handler(self, path, handler):
+        self.status_handlers[path] = handler
 
     def check_for_timeout(self, last_activity):
         if ((datetime.datetime.now() - last_activity) >

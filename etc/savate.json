@@ -42,5 +42,13 @@
             "user": "username",
             "password": "password"
         }
-    ]
+    ],
+    "status": {
+        "/status": {
+            "handler": "savate.status.SimpleStatusClient"
+        },
+        "/status.json": {
+            "handler": "savate.status.JSONStatusClient"
+        }
+    }
 }

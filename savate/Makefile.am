@@ -10,4 +10,5 @@ pkgpyexec_PYTHON = \
 	looping.py \
 	relay.py \
 	server.py \
+	status.py \
 	sources.py
