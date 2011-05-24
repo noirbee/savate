@@ -51,8 +51,8 @@ daemon_context = DaemonContext(
     )
 
 daemon_context.signal_map = {
-    signal.SIGTERM: server.signal,
-    signal.SIGINT: server.signal,
+    signal.SIGTERM: server.stop,
+    signal.SIGINT: server.stop,
     }
 
 with daemon_context:

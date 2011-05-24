@@ -306,10 +306,7 @@ class TCPServer(looping.BaseIOEventHandler):
         # the server instance itself
         self.logger.info('Shutting down')
 
-    def stop(self):
-        self.logger.info('Stopping main loop')
+    def stop(self, signum, _frame):
+        self.logger.info('Received signal %s, stopping main loop', find_signal_str(signum))
         self.running = False
 
-    def signal(self, signum, _frame):
-        self.logger.info('Received signal %s', find_signal_str(signum))
-        self.stop()
