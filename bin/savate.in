@@ -53,6 +53,7 @@ daemon_context = DaemonContext(
 daemon_context.signal_map = {
     signal.SIGTERM: server.stop,
     signal.SIGINT: server.stop,
+    signal.SIGHUP: server.graceful_stop
     }
 
 with daemon_context:

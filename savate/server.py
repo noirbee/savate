@@ -195,6 +195,10 @@ class TCPServer(looping.BaseIOEventHandler):
 
     RESTART_DELAY = 1
 
+    STATE_RUNNING = 'RUNNING'
+    STATE_STOPPED = 'STOPPED'
+    STATE_SHUTTING_DOWN = 'SHUTTING_DOWN'
+
     def __init__(self, address, config, logger = None):
         self.address = address
         self.config = config
@@ -203,7 +207,7 @@ class TCPServer(looping.BaseIOEventHandler):
         self.relays = {}
         self.relays_to_restart = collections.deque()
         self.auth_handlers = []
-        self.running = True
+        self.state = self.STATE_RUNNING
 
     def create_loop(self):
         self.loop = looping.IOLoop(self.logger)
@@ -290,13 +294,20 @@ class TCPServer(looping.BaseIOEventHandler):
         self.loop.unregister(client)
         del self.sources[source.path][source]['clients'][client.fileno()]
 
+    def all_clients(self):
+        return itertools.chain.from_iterable(source_dict['clients'].itervalues()
+                                             for source in self.sources.itervalues()
+                                             for source_dict in source.itervalues()
+                                             )
+
     def publish_packet(self, source, packet):
         for client in self.sources[source.path][source]['clients'].values():
             client.add_packet(packet)
             self.loop.inject_event(client.fileno(), looping.POLLOUT)
 
     def serve_forever(self):
-        while self.running:
+        while (self.state == self.STATE_RUNNING or
+               (self.state == self.STATE_SHUTTING_DOWN and any(self.all_clients()))):
             self.loop.once(self.LOOP_TIMEOUT)
             while (self.relays_to_restart and
                    self.relays_to_restart[0][0] < time.time()):
@@ -308,5 +319,11 @@ class TCPServer(looping.BaseIOEventHandler):
 
     def stop(self, signum, _frame):
         self.logger.info('Received signal %s, stopping main loop', find_signal_str(signum))
-        self.running = False
+        self.state = self.STATE_STOPPED
 
+    def graceful_stop(self, signum, _frame):
+        self.logger.info('Received signal %s, performing graceful stop', find_signal_str(signum))
+        # Close our accept() socket
+        self.loop.unregister(self)
+        self.close()
+        self.state = self.STATE_SHUTTING_DOWN
