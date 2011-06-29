@@ -73,8 +73,6 @@ class HTTPClient(looping.BaseIOEventHandler):
         # Squash any consecutive / into one
         self.request_parser.request_path = re.sub('//+', '/',
                                                   self.request_parser.request_path)
-        path = self.request_parser.request_path
-
         # Authorization
         for auth_handler in self.server.auth_handlers:
             auth_result = auth_handler.authorize(self.address, self.request_parser)
@@ -97,6 +95,8 @@ class HTTPClient(looping.BaseIOEventHandler):
             else:
                 # Wrong response from auth handler
                 raise RuntimeError('Wrong response from authorization handler %s' % auth_handler)
+
+        path = self.request_parser.request_path
 
         if self.request_parser.request_method in [b'PUT', b'SOURCE', b'POST']:
             # New source

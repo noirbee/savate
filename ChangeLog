@@ -1,3 +1,7 @@
+Version 0.3.0~dev
+
+	* Added a token-based (mod_auth_token-style) authorization handler.
+
 Version 0.2.0 Released on 2011/05/24
 
 	* Added graceful stop on SIGHUP.
