@@ -318,6 +318,7 @@ class TCPServer(looping.BaseIOEventHandler):
         while (self.state == self.STATE_RUNNING or
                (self.state == self.STATE_SHUTTING_DOWN and any(self.all_clients()))):
             self.loop.once(self.LOOP_TIMEOUT)
+
             while (self.relays_to_restart and
                    self.relays_to_restart[0][0] < time.time()):
                 self.logger.info('Restarting relay %s', self.relays_to_restart[0][1])
