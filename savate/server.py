@@ -9,8 +9,14 @@ import time
 import re
 import itertools
 import errno
+import urlparse
+try:
+    import json
+except ImportError:
+    import simplejson as json
 import cyhttp11
 from savate import looping
+from savate import configuration
 from savate import helpers
 from savate.helpers import HTTPError, HTTPParseError, find_signal_str
 from savate import clients
@@ -190,9 +196,11 @@ class TCPServer(looping.BaseIOEventHandler):
     STATE_STOPPED = 'STOPPED'
     STATE_SHUTTING_DOWN = 'SHUTTING_DOWN'
 
-    def __init__(self, address, config, logger = None):
+    def __init__(self, address, config_file, logger = None):
         self.address = address
-        self.config = config
+        self.config_file = config_file
+        with open(self.config_file) as conf_file:
+            self.config = configuration.ServerConfiguration(self, json.load(conf_file))
         self.logger = logger or logging.getLogger('savate')
         self.sources = {}
         self.relays = {}
@@ -200,6 +208,7 @@ class TCPServer(looping.BaseIOEventHandler):
         self.auth_handlers = []
         self.status_handlers = {}
         self.state = self.STATE_RUNNING
+        self.reloading = False
 
     def create_loop(self):
         self.loop = looping.IOLoop(self.logger)
@@ -238,10 +247,15 @@ class TCPServer(looping.BaseIOEventHandler):
         self.logger.info('New client %s, %s', client_socket, client_address)
         self.loop.register(HTTPClient(self, client_socket, client_address), looping.POLLIN)
 
-    def add_relay(self, *relay_args):
-        tmp_relay = relay.HTTPRelay(*relay_args)
-        self.relays[tmp_relay.sock] = relay_args
-        self.loop.register(tmp_relay, looping.POLLOUT)
+    def configure(self):
+        self.config.configure()
+
+    def add_relay(self, url, path, address_info = None):
+        if urlparse.urlparse(url).scheme in ('udp', 'multicast'):
+            tmp_relay = relay.UDPRelay(self, url, path, address_info)
+        else:
+            tmp_relay = relay.HTTPRelay(self, url, path, address_info)
+        self.relays[tmp_relay.sock] = tmp_relay
 
     def add_auth_handler(self, handler):
         self.auth_handlers.append(handler)
@@ -307,7 +321,14 @@ class TCPServer(looping.BaseIOEventHandler):
             while (self.relays_to_restart and
                    self.relays_to_restart[0][0] < time.time()):
                 self.logger.info('Restarting relay %s', self.relays_to_restart[0][1])
-                self.add_relay(*(self.relays_to_restart.popleft()[1]))
+                tmp_relay = self.relays_to_restart.popleft()[1]
+                self.add_relay(tmp_relay.url, tmp_relay.path, tmp_relay.addr_info)
+
+            if self.reloading:
+                self.reloading = False
+                with open(self.config_file) as conf_file:
+                    self.config.reconfigure(json.load(conf_file))
+
         # FIXME: we should probably close() every source/client and
         # the server instance itself
         self.logger.info('Shutting down')
@@ -315,6 +336,10 @@ class TCPServer(looping.BaseIOEventHandler):
     def stop(self, signum, _frame):
         self.logger.info('Received signal %s, stopping main loop', find_signal_str(signum))
         self.state = self.STATE_STOPPED
+
+    def reload(self, signum, _frame):
+        self.logger.info('Received signal %s, reloading configuration', find_signal_str(signum))
+        self.reloading = True
 
     def graceful_stop(self, signum, _frame):
         self.logger.info('Received signal %s, performing graceful stop', find_signal_str(signum))

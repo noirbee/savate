@@ -1,6 +1,7 @@
 #! /usr/bin/python
 # -*- coding: utf-8 -*-
 
+import os
 import optparse
 parser = optparse.OptionParser()
 parser.set_defaults(
@@ -33,7 +34,7 @@ logger.setLevel(logging.INFO)
 
 from savate.server import TCPServer
 
-server = TCPServer((conf.get('bind', '0.0.0.0'), conf.get('port', 8000)), conf, logger)
+server = TCPServer((conf.get('bind', '0.0.0.0'), conf.get('port', 8000)), os.path.realpath(options.config_file), logger)
 
 import signal
 import sys
@@ -53,7 +54,8 @@ daemon_context = DaemonContext(
 daemon_context.signal_map = {
     signal.SIGTERM: server.stop,
     signal.SIGINT: server.stop,
-    signal.SIGHUP: server.graceful_stop
+    signal.SIGHUP: server.reload,
+    signal.SIGUSR1: server.graceful_stop,
     }
 
 with daemon_context:
@@ -61,79 +63,12 @@ with daemon_context:
     if daemon_context.detach_process:
         redirect_stream(sys.stderr, None)
 
-    import urlparse
-    import struct
-    import socket
-    import savate.looping
-    import savate.relay
-    from savate.sources import MPEGTSSource
-
     server.create_socket()
     server.create_loop()
 
     logger.info('Serving on %s', server.address)
 
-    net_resolve_all = conf.get('net_resolve_all', False)
-
-    for mount_conf in conf.get('mounts', {}):
-        if 'source_urls' not in mount_conf:
-            continue
-        logger.info('Setting up relays for %s', mount_conf['path'])
-        path = mount_conf['path']
-        for source_url in mount_conf['source_urls']:
-            logger.info('Relaying %s', source_url)
-            parsed_url = urlparse.urlparse(source_url)
-            if parsed_url.scheme in ('udp', 'multicast'):
-                # UDP multicast input
-                # FIXME: we're assuming an MPEG-TS source
-                udp_address = (parsed_url.hostname, parsed_url.port)
-                udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-                udp_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-                udp_socket.bind(udp_address)
-                udp_socket.setblocking(0)
-                if parsed_url.scheme == 'multicast':
-                    multicast_request = struct.pack('=4sl', socket.inet_aton(parsed_url.hostname), socket.INADDR_ANY)
-                    udp_socket.setsockopt(socket.SOL_IP, socket.IP_ADD_MEMBERSHIP, multicast_request)
-                    # udp_socket is now multicast ready
-
-                udp_source = MPEGTSSource(server, udp_socket, udp_address, b'video/MP2T', None, path)
-                server.sources.setdefault(
-                    path,
-                    {}
-                    )[udp_source] = {'source': udp_source, 'clients': {}}
-                server.loop.register(udp_source, savate.looping.POLLIN)
-            else:
-                if mount_conf.get('net_resolve_all', net_resolve_all):
-                    logger.info('Resolving all IP addresses for %s:%s',
-                                parsed_url.hostname, parsed_url.port)
-                    for address_info in socket.getaddrinfo(
-                        parsed_url.hostname,
-                        parsed_url.port,
-                        socket.AF_UNSPEC,
-                        socket.SOCK_STREAM,
-                        socket.IPPROTO_TCP):
-                        logger.info('Trying to relay %s from %s:%s', source_url,
-                                    address_info[4][0], address_info[4][1])
-                        server.add_relay(server, source_url, path, address_info)
-                else:
-                    server.add_relay(server, source_url, path)
-
-    for auth_handler in conf.get('auth', []):
-        handler_name = auth_handler['handler']
-        handler_module, handler_class = handler_name.rsplit('.', 1)
-        handler_module = __import__(handler_module, {}, {}, [''])
-        handler_class = getattr(handler_module, handler_class)
-        handler_instance = handler_class(server, conf, **auth_handler)
-        server.add_auth_handler(handler_instance)
-
-    for handler_path, status_handler in conf.get('status', {}).items():
-        handler_name = status_handler['handler']
-        handler_module, handler_class = handler_name.rsplit('.', 1)
-        handler_module = __import__(handler_module, {}, {}, [''])
-        handler_class = getattr(handler_module, handler_class)
-        handler_instance = handler_class(server, conf, **status_handler)
-        server.add_status_handler(handler_path, handler_instance)
-
+    server.config.configure()
     logger.info('Done setting up relays')
 
     logger.info('Starting main loop')

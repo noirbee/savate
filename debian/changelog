@@ -1,8 +1,9 @@
 savate (0.3.0~dev-1) unstable; urgency=low
 
   * New upstream release.
+  * Added reload and graceful stop capabilities to the init script.
 
- -- Nicolas Noirbent <nicolas.noirbent@smartjog.com>  Wed, 29 Jun 2011 17:53:44 +0200
+ -- Nicolas Noirbent <nicolas.noirbent@smartjog.com>  Thu, 30 Jun 2011 19:15:29 +0200
 
 savate (0.2.0-1) unstable; urgency=low
 

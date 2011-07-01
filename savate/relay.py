@@ -3,24 +3,62 @@
 import errno
 import urlparse
 import socket
+import struct
 import cyhttp11
 from savate import looping
 from savate import sources
 from savate import helpers
 from savate.helpers import HTTPError, HTTPParseError
+from savate.sources import MPEGTSSource
 from savate import buffer_event
 
-class HTTPRelay(looping.BaseIOEventHandler):
-
-    REQUEST_METHOD = b'GET'
-    HTTP_VERSION = b'HTTP/1.1'
-    RESPONSE_MAX_SIZE = 4096
+class Relay(looping.BaseIOEventHandler):
 
     def __init__(self, server, url, path, addr_info = None):
         self.server = server
         self.url = url
         self.parsed_url = urlparse.urlparse(url)
         self.path = path
+        self.addr_info = addr_info
+
+    def close(self):
+        self.server.check_for_relay_restart(self)
+        looping.BaseIOEventHandler.close(self)
+
+class UDPRelay(Relay):
+
+    def __init__(self, server, url, path, addr_info = None):
+        Relay.__init__(self, server, url, path, addr_info)
+
+        # UDP, possibly multicast input
+        udp_address = (self.parsed_url.hostname, self.parsed_url.port)
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self.sock.bind(udp_address)
+        self.sock.setblocking(0)
+        if self.parsed_url.scheme == 'multicast':
+            multicast_request = struct.pack('=4sl', socket.inet_aton(self.parsed_url.hostname), socket.INADDR_ANY)
+            self.sock.setsockopt(socket.SOL_IP, socket.IP_ADD_MEMBERSHIP, multicast_request)
+            # The socket is now multicast ready
+
+        # FIXME: we're assuming an MPEG-TS source
+        udp_source = MPEGTSSource(server, self.sock, udp_address, b'video/MP2T', None, path)
+        self.server.sources.setdefault(
+            path,
+            {}
+            )[udp_source] = {'source': udp_source, 'clients': {}}
+        self.server.loop.register(udp_source, looping.POLLIN)
+
+
+class HTTPRelay(Relay):
+
+    REQUEST_METHOD = b'GET'
+    HTTP_VERSION = b'HTTP/1.1'
+    RESPONSE_MAX_SIZE = 4096
+
+    def __init__(self, server, url, path, addr_info = None):
+        Relay.__init__(self, server, url, path, addr_info)
+
         if addr_info:
             self.sock = socket.socket(addr_info[0], addr_info[1], addr_info[2])
             self.host_address = addr_info[4][0]
@@ -36,10 +74,7 @@ class HTTPRelay(looping.BaseIOEventHandler):
         if error != errno.EINPROGRESS:
             raise socket.error(error, errno.errorcode[error])
         self.handle_event = self.handle_connect
-
-    def close(self):
-        self.server.check_for_relay_restart(self)
-        looping.BaseIOEventHandler.close(self)
+        self.server.loop.register(self, looping.POLLOUT)
 
     def handle_connect(self, eventmask):
         if eventmask & looping.POLLOUT:

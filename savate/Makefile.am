@@ -4,6 +4,7 @@ pkgpyexec_PYTHON = \
 	binary_parser.py \
 	buffer_event.py \
 	clients.py \
+	configuration.py \
 	flv.py \
 	flv_source.py \
 	helpers.py \
