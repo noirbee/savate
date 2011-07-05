@@ -115,12 +115,7 @@ class HTTPClient(looping.BaseIOEventHandler):
                                                                self.address,
                                                                content_type,
                                                                self.request_parser)
-                self.server.sources.setdefault(
-                    path,
-                    {}
-                    )[source] = {'source': source, 'clients': {}}
-                loop.register(source,
-                              looping.POLLIN)
+                self.server.add_source(path, source)
             else:
                 self.server.logger.warning('Unrecognized Content-Type %s', content_type)
                 loop.register(helpers.HTTPEventHandler(self.server,
@@ -269,6 +264,11 @@ class TCPServer(looping.BaseIOEventHandler):
             # Client/source timeout
             raise InactivityTimeout('Timeout: %d milliseconds without I/O' %
                                     self.INACTIVITY_TIMEOUT)
+
+    def add_source(self, path, source):
+        self.sources.setdefault(path, {})[source] = {'source': source,
+                                                     'clients': {}}
+        self.loop.register(source, looping.POLLIN)
 
     def check_for_relay_restart(self, handler):
         # If this is one of our relays, mark it for restart

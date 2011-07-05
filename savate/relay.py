@@ -43,11 +43,7 @@ class UDPRelay(Relay):
 
         # FIXME: we're assuming an MPEG-TS source
         udp_source = MPEGTSSource(server, self.sock, udp_address, b'video/MP2T', None, path)
-        self.server.sources.setdefault(
-            path,
-            {}
-            )[udp_source] = {'source': udp_source, 'clients': {}}
-        self.server.loop.register(udp_source, looping.POLLIN)
+        self.server.add_source(path, udp_source)
 
 
 class HTTPRelay(Relay):
@@ -158,12 +154,7 @@ class HTTPRelay(Relay):
                                                            content_type,
                                                            self.response_parser,
                                                            self.path)
-            self.server.sources.setdefault(
-                self.path,
-                {}
-                )[source] = {'source': source, 'clients': {}}
-            loop.register(source,
-                          looping.POLLIN)
+            self.server.add_source(self.path, source)
         else:
             self.server.logger.warning('Unrecognized Content-Type %s', content_type)
             loop.register(helpers.HTTPEventHandler(self.server,
