@@ -40,25 +40,10 @@ class FLVSource(StreamSource):
         for group_data in self.burst_groups_data:
             client.add_packet(group_data)
 
-    def handle_event(self, eventmask):
-        if eventmask & looping.POLLIN:
-            while True:
-                packet = helpers.handle_eagain(self.sock.recv, self.RECV_BUFFER_SIZE)
-                if packet == None:
-                    # EAGAIN
-                    break
-                elif packet == b'':
-                    # End of stream
-                    self.server.logger.warn('End of stream for %s, %s', self.path, (self.sock, self.address))
-                    self.close()
-                    # FIXME: publish "EOS" packet
-                    break
-                else:
-                    self.buffer_data = self.buffer_data + packet
-                    while self.handle_data():
-                        pass
-        else:
-            self.server.logger.error('%s: unexpected eventmask %s', self, eventmask)
+    def handle_packet(self, packet):
+        self.buffer_data = self.buffer_data + packet
+        while self.handle_data():
+            pass
 
     def handle_header(self):
         if len(self.buffer_data) >= FLVHeader.object_size():

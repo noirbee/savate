@@ -34,9 +34,15 @@ class StreamSource(looping.BaseIOEventHandler):
                     # FIXME: publish "EOS" packet
                     break
                 else:
-                    self.publish_packet(packet)
+                    self.handle_packet(packet)
         else:
             self.server.logger.error('%s: unexpected eventmask %s', self, eventmask)
+
+    def handle_packet(self, packet):
+        # By default, we do nothing and directly feed it to
+        # publish_packet(). This is meant to be overriden in
+        # subclasses.
+        self.publish_packet(packet)
 
     def publish_packet(self, packet):
         self.server.publish_packet(self, packet)
@@ -61,10 +67,10 @@ class BufferedRawSource(StreamSource):
             self.output_buffer_data = ''
         self.burst_packets = helpers.BurstQueue(self.BURST_SIZE)
 
-    def publish_packet(self, packet):
+    def handle_packet(self, packet):
         self.output_buffer_data = self.output_buffer_data + packet
         if len(self.output_buffer_data) >= self.TEMP_BUFFER_SIZE:
-            StreamSource.publish_packet(self, self.output_buffer_data)
+            self.publish_packet(self.output_buffer_data)
             self.burst_packets.append(self.output_buffer_data)
             self.output_buffer_data = ''
 
@@ -74,7 +80,7 @@ class BufferedRawSource(StreamSource):
 
 class FixedPacketSizeSource(BufferedRawSource, StreamSource):
 
-    def publish_packet(self, packet):
+    def handle_packet(self, packet):
         self.output_buffer_data = self.output_buffer_data + packet
         if len(self.output_buffer_data) >= self.TEMP_BUFFER_SIZE:
             nb_packets, remaining_bytes = divmod(len(self.output_buffer_data),
@@ -85,7 +91,7 @@ class FixedPacketSizeSource(BufferedRawSource, StreamSource):
             else:
                 tmp_data = self.output_buffer_data
                 self.output_buffer_data = ''
-            StreamSource.publish_packet(self, tmp_data)
+            self.publish_packet(tmp_data)
             self.burst_packets.append(tmp_data)
 
 class MPEGTSSource(FixedPacketSizeSource):
