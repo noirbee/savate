@@ -151,11 +151,13 @@ class HTTPRelay(Relay):
 
     def transform_response(self):
         if self.response_parser.status_code not in (200,):
-            raise HTTPError('Unexpected response %d %s from %s, %s' %
-                            (self.response_parser.status_code,
-                             self.response_parser.reason_phrase,
-                             self.url,
-                             (self.sock, self.address)))
+            self.server.logger.error('Unexpected response %d %s from %s, %s',
+                                     self.response_parser.status_code,
+                                     self.response_parser.reason_phrase,
+                                     self.url,
+                                     (self.sock, self.address))
+            self.close()
+            return
         content_type = self.response_parser.headers.get('Content-Type',
                                                         'application/octet-stream')
         # FIXME: similar code is present in server.py
