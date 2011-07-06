@@ -72,6 +72,10 @@ class HTTPEventHandler(BaseIOEventHandler):
         headers_lines = build_http_headers(headers, body)
         return b'\r\n'.join([status_line, headers_lines, body])
 
+    def close(self):
+        self.server.loop.unregister(self)
+        BaseIOEventHandler.close(self)
+
     def flush(self):
         if self.output_buffer.flush():
             self.last_activity = datetime.datetime.now()
@@ -79,13 +83,25 @@ class HTTPEventHandler(BaseIOEventHandler):
 
     def finish(self):
         if self.output_buffer.empty():
-            self.server.loop.unregister(self)
             self.close()
 
     def handle_event(self, eventmask):
         if eventmask & looping.POLLOUT:
-            self.flush()
-            self.finish()
+            try:
+                self.flush()
+                self.finish()
+            except IOError, exc:
+                if exc.errno in (errno.EPIPE, errno.ECONNRESET):
+                    self.server.logger.error('Connection closed by %s', self)
+                    self.close()
+                else:
+                    raise
+        elif eventmask & (looping.POLLERR | looping.POLLHUP):
+            # Error / Hangup, client probably closed connection
+            self.server.logger.error('Connection closed by %s', self)
+            self.close()
+        else:
+            self.server.logger.error('%s: unexpected eventmask %d (%s)', self, eventmask, event_mask_str(eventmask))
 
     def __str__(self):
         return '<%s for %s, %s>' % (
