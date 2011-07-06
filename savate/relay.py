@@ -40,23 +40,48 @@ class Relay(looping.BaseIOEventHandler):
 
 class UDPRelay(Relay):
 
+    # Used to delay starting a source in case we're not getting any
+    # data on our UDP socket (dead source, network issue)
+    MIN_START_BUFFER = 64 * 2**10
+
     def __init__(self, server, url, path, addr_info = None):
         Relay.__init__(self, server, url, path, addr_info)
 
         # UDP, possibly multicast input
-        udp_address = (self.parsed_url.hostname, self.parsed_url.port)
+        self.udp_address = (self.parsed_url.hostname, self.parsed_url.port)
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        self.sock.bind(udp_address)
+        self.sock.bind(self.udp_address)
         self.sock.setblocking(0)
         if self.parsed_url.scheme == 'multicast':
             multicast_request = struct.pack('=4sl', socket.inet_aton(self.parsed_url.hostname), socket.INADDR_ANY)
             self.sock.setsockopt(socket.SOL_IP, socket.IP_ADD_MEMBERSHIP, multicast_request)
             # The socket is now multicast ready
+        self.initial_buffer_data = ''
+        self.server.loop.register(self, looping.POLLIN)
+        self.server.update_activity(self)
 
-        # FIXME: we're assuming an MPEG-TS source
-        udp_source = MPEGTSSource(server, self.sock, udp_address, b'video/MP2T', None, path)
-        self.server.add_source(path, udp_source)
+    def handle_event(self, eventmask):
+        if eventmask & looping.POLLIN:
+            # FIXME: this is basically a c/c from server.py's
+            # HTTPClient's handle_read
+            while True:
+                tmp_buffer = helpers.handle_eagain(self.sock.recv,
+                                                   self.MIN_START_BUFFER)
+                if tmp_buffer == None:
+                    # EAGAIN, we'll come back later
+                    break
+                else:
+                    self.initial_buffer_data += tmp_buffer
+                if len(self.initial_buffer_data) >= self.MIN_START_BUFFER:
+                    # OK, this looks like a valid source (since there
+                    # is some socket activity)
+                    fake_response_parser = cyhttp11.HTTPClientParser()
+                    fake_response_parser.body = self.initial_buffer_data
+                    # FIXME: we're assuming an MPEG-TS source
+                    udp_source = MPEGTSSource(self.server, self.sock, self.udp_address, b'video/MP2T', fake_response_parser, self.path)
+                    self.server.add_source(self.path, udp_source)
+                    break
 
 
 class HTTPRelay(Relay):
