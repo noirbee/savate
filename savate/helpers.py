@@ -2,7 +2,6 @@
 
 import errno
 import collections
-import datetime
 import signal
 from savate import looping
 from savate.looping import BaseIOEventHandler
@@ -65,7 +64,6 @@ class HTTPEventHandler(BaseIOEventHandler):
         self.output_buffer = buffer_event.BufferOutputHandler(sock)
         data = self._build_response(status, reason, headers or {}, body)
         self.output_buffer.add_buffer(data)
-        self.last_activity = datetime.datetime.now()
 
     def _build_response(self, status, reason, headers, body):
         status_line = b'HTTP/1.0 %d %s' % (status, reason)
@@ -73,13 +71,13 @@ class HTTPEventHandler(BaseIOEventHandler):
         return b'\r\n'.join([status_line, headers_lines, body])
 
     def close(self):
+        self.server.timeouts.remove_timeout(self)
         self.server.loop.unregister(self)
         BaseIOEventHandler.close(self)
 
     def flush(self):
         if self.output_buffer.flush():
-            self.last_activity = datetime.datetime.now()
-        self.server.check_for_timeout(self.last_activity)
+            self.server.update_activity(self)
 
     def finish(self):
         if self.output_buffer.empty():

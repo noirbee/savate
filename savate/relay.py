@@ -22,6 +22,7 @@ class Relay(looping.BaseIOEventHandler):
         self.addr_info = addr_info
 
     def close(self):
+        self.server.loop.unregister(self)
         self.server.check_for_relay_restart(self)
         looping.BaseIOEventHandler.close(self)
 
@@ -79,6 +80,7 @@ class HTTPRelay(Relay):
             raise socket.error(error, errno.errorcode[error])
         self.handle_event = self.handle_connect
         self.server.loop.register(self, looping.POLLOUT)
+        self.server.update_activity(self)
 
     def handle_connect(self, eventmask):
         if eventmask & looping.POLLOUT:

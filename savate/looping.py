@@ -1,5 +1,6 @@
 #! -*- coding: utf-8 -*-
 
+import time
 import errno
 import select
 import logging
@@ -35,6 +36,7 @@ class IOLoop(object):
         self.handlers = {}
         self.injected_events = {}
         self.logger = logger or logging.getLogger('looping')
+        self._now = time.time()
 
     def register(self, io_event_handler, eventmask):
         if io_event_handler.fileno() not in self.handlers:
@@ -60,6 +62,9 @@ class IOLoop(object):
             del self.handlers[fd]
             self.injected_events.pop(fd, None)
 
+    def now(self):
+        return self._now
+
     def once(self, timeout = 0):
         while True:
             try:
@@ -76,6 +81,10 @@ class IOLoop(object):
                     continue
                 else:
                     raise
+
+        # Update our idea of the current time
+        self._now = time.time()
+
         for fd, eventmask in self._merge_eventlists(dict(events_list)).items():
             try:
                 handler = self.handlers[fd]

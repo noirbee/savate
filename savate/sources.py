@@ -28,10 +28,16 @@ class StreamSource(looping.BaseIOEventHandler):
         self.server.remove_source(self)
         looping.BaseIOEventHandler.close(self)
 
+    def recv_packet(self, buffer_size = RECV_BUFFER_SIZE):
+        packet = helpers.handle_eagain(self.sock.recv, buffer_size)
+        if packet:
+            self.server.update_activity(self)
+        return packet
+
     def handle_event(self, eventmask):
         if eventmask & looping.POLLIN:
             while True:
-                packet = helpers.handle_eagain(self.sock.recv, self.RECV_BUFFER_SIZE)
+                packet = self.recv_packet()
                 if packet == None:
                     # EAGAIN
                     break

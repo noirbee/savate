@@ -4,7 +4,6 @@ import socket
 import logging
 import collections
 import random
-import datetime
 import time
 import re
 import itertools
@@ -22,6 +21,7 @@ from savate.helpers import HTTPError, HTTPParseError, find_signal_str
 from savate import clients
 from savate import sources
 from savate import relay
+from savate import timeouts
 
 class HTTPClient(looping.BaseIOEventHandler):
 
@@ -35,6 +35,10 @@ class HTTPClient(looping.BaseIOEventHandler):
         self.request_size = 0
         self.request_buffer = b''
         self.request_parser = cyhttp11.HTTPParser()
+
+    def close(self):
+        self.server.loop.unregister(self)
+        looping.BaseIOEventHandler.close(self)
 
     def handle_event(self, eventmask):
         if eventmask & looping.POLLIN:
@@ -182,8 +186,8 @@ class TCPServer(looping.BaseIOEventHandler):
 
     LOOP_TIMEOUT = 0.5
 
-    # Maximum I/O inactivity timeout, in milliseconds
-    INACTIVITY_TIMEOUT = 10 * 1000
+    # Maximum I/O inactivity timeout, in seconds
+    INACTIVITY_TIMEOUT = 10
 
     RESTART_DELAY = 1
 
@@ -204,10 +208,13 @@ class TCPServer(looping.BaseIOEventHandler):
         self.status_handlers = {}
         self.state = self.STATE_RUNNING
         self.reloading = False
+        self.timeouts = None
 
     def create_loop(self):
         self.loop = looping.IOLoop(self.logger)
         self.loop.register(self, looping.POLLIN)
+        # Our timeout handler
+        self.loop.register(self.timeouts, looping.POLLIN)
 
     def create_socket(self):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -215,6 +222,11 @@ class TCPServer(looping.BaseIOEventHandler):
         self.sock.bind(self.address)
         self.sock.listen(self.BACKLOG)
         self.sock.setblocking(0)
+
+        # The Timeouts object uses a file descriptor, so we must
+        # initialise here to avoid having it closed by daemonisation
+        if not self.timeouts:
+            self.timeouts = timeouts.Timeouts(self)
 
     def handle_event(self, eventmask):
         if eventmask & looping.POLLIN:
@@ -240,7 +252,9 @@ class TCPServer(looping.BaseIOEventHandler):
     def handle_new_incoming(self):
         client_socket, client_address = self.sock.accept()
         self.logger.info('New client %s, %s', client_socket, client_address)
-        self.loop.register(HTTPClient(self, client_socket, client_address), looping.POLLIN)
+        new_handler = HTTPClient(self, client_socket, client_address)
+        self.timeouts.update_timeout(new_handler, int(self.loop.now()) + self.INACTIVITY_TIMEOUT)
+        self.loop.register(new_handler, looping.POLLIN)
 
     def configure(self):
         self.config.configure()
@@ -258,17 +272,14 @@ class TCPServer(looping.BaseIOEventHandler):
     def add_status_handler(self, path, handler):
         self.status_handlers[path] = handler
 
-    def check_for_timeout(self, last_activity):
-        if ((datetime.datetime.now() - last_activity) >
-            datetime.timedelta(milliseconds = self.INACTIVITY_TIMEOUT)):
-            # Client/source timeout
-            raise InactivityTimeout('Timeout: %d milliseconds without I/O' %
-                                    self.INACTIVITY_TIMEOUT)
-
     def add_source(self, path, source):
         self.sources.setdefault(path, {})[source] = {'source': source,
                                                      'clients': {}}
+        self.timeouts.update_timeout(source, int(self.loop.now()) + self.INACTIVITY_TIMEOUT)
         self.loop.register(source, looping.POLLIN)
+
+    def update_activity(self, handler):
+        self.timeouts.update_timeout(handler, int(self.loop.now()) + self.INACTIVITY_TIMEOUT)
 
     def check_for_relay_restart(self, handler):
         # If this is one of our relays, mark it for restart
@@ -279,6 +290,8 @@ class TCPServer(looping.BaseIOEventHandler):
                                            self.relays.pop(handler.sock)))
 
     def remove_source(self, source):
+        # De-activate the timeout handling for this source
+        self.timeouts.remove_timeout(source)
         # FIXME: client shutdown
         if len(self.sources[source.path]) > 1:
             # There is at least one other source for this path,
@@ -297,6 +310,9 @@ class TCPServer(looping.BaseIOEventHandler):
         self.check_for_relay_restart(source)
 
     def remove_client(self, client):
+        # De-activate the timeout handling for this client
+        self.timeouts.remove_timeout(client)
+
         source = client.source
         self.logger.info('Dropping client for path %s, %s', source.path,
                          client.address)

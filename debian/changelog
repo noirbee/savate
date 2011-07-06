@@ -2,8 +2,10 @@ savate (0.3.0~dev-1) unstable; urgency=low
 
   * New upstream release.
   * Added reload and graceful stop capabilities to the init script.
+  * Switch package architecture to any and added python-dev
+    build-dependency.
 
- -- Nicolas Noirbent <nicolas.noirbent@smartjog.com>  Thu, 30 Jun 2011 19:15:29 +0200
+ -- Nicolas Noirbent <nicolas.noirbent@smartjog.com>  Wed, 06 Jul 2011 14:26:49 +0200
 
 savate (0.2.0-1) unstable; urgency=low
 

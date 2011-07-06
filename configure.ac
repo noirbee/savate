@@ -12,6 +12,7 @@ AM_INIT_AUTOMAKE([foreign])
 AC_PROG_CC
 AC_PROG_LIBTOOL
 AM_PATH_PYTHON
+AC_PYTHON_DEVEL
 
 AC_SUBST([savatesysconfdir], [\$\(sysconfdir\)/savate])
 
