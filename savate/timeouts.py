@@ -42,12 +42,22 @@ class Timeouts(BaseIOEventHandler):
             # avoid some strange poll-ability bugs
             self.timer.read()
             # Timer expired
-            timed_out_handlers = self.timeouts.pop(self.min_expiration())
-            for handler in timed_out_handlers.values():
+            expiration = self.min_expiration()
+
+            # We use this instead of iterating on
+            # self.timeouts[expiration] because closing one of the
+            # handlers may close other handlers, and thus remove some
+            # of timeouts we're processing in this call (i.e. when a
+            # source times out any of its clients that was marked as
+            # timed out will be dropped, and removed from the timeouts
+            # list)
+            while self.timeouts[expiration]:
+                sock, timed_out_handler = self.timeouts[expiration].popitem()
                 self.server.logger.error('Timeout for %s: %d seconds without I/O' %
-                                         (handler, self.server.INACTIVITY_TIMEOUT))
-                self.handlers_timeouts.pop(handler.sock)
-                handler.close()
+                                         (timed_out_handler, self.server.INACTIVITY_TIMEOUT))
+                self.handlers_timeouts.pop(sock)
+                timed_out_handler.close()
+            del self.timeouts[expiration]
             if self.timeouts:
                 # Reset the timer to the earliest one
                 self.timer.settime(self.min_expiration(), flags = TFD_TIMER_ABSTIME)
