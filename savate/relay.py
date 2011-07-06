@@ -25,6 +25,7 @@ class Relay(looping.BaseIOEventHandler):
         self.addr_info = addr_info
 
     def close(self):
+        self.server.timeouts.remove_timeout(self)
         self.server.loop.unregister(self)
         self.server.check_for_relay_restart(self)
         looping.BaseIOEventHandler.close(self)
