@@ -87,6 +87,14 @@ class HTTPEventHandler(BaseIOEventHandler):
             self.flush()
             self.finish()
 
+    def __str__(self):
+        return '<%s for %s, %s>' % (
+            self.__class__.__name__,
+            self.request_parser.request_path,
+            self.address,
+            )
+
+
 class BurstQueue(collections.deque):
 
     def __init__(self, maxbytes, iterable = ()):

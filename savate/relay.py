@@ -25,6 +25,14 @@ class Relay(looping.BaseIOEventHandler):
         self.server.check_for_relay_restart(self)
         looping.BaseIOEventHandler.close(self)
 
+    def __str__(self):
+        return '<%s relaying %s for %s>' % (
+            self.__class__.__name__,
+            self.url,
+            self.path,
+            )
+
+
 class UDPRelay(Relay):
 
     def __init__(self, server, url, path, addr_info = None):
