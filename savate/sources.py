@@ -3,6 +3,7 @@
 from savate import helpers
 from savate import looping
 
+
 class StreamSource(looping.BaseIOEventHandler):
 
     # Incoming maximum buffer size
@@ -65,6 +66,7 @@ class StreamSource(looping.BaseIOEventHandler):
         # Do nothing by default
         pass
 
+
 class BufferedRawSource(StreamSource):
 
     # Temporary buffer size
@@ -92,6 +94,7 @@ class BufferedRawSource(StreamSource):
         for packet in self.burst_packets:
             client.add_packet(packet)
 
+
 class FixedPacketSizeSource(BufferedRawSource, StreamSource):
 
     def handle_packet(self, packet):
@@ -108,10 +111,12 @@ class FixedPacketSizeSource(BufferedRawSource, StreamSource):
             self.publish_packet(tmp_data)
             self.burst_packets.append(tmp_data)
 
+
 class MPEGTSSource(FixedPacketSizeSource):
 
     MPEGTS_PACKET_SIZE = 188
     PACKET_SIZE = MPEGTS_PACKET_SIZE
+
 
 from savate.flv_source import FLVSource
 

@@ -5,6 +5,7 @@ import errno
 import select
 import logging
 
+
 try:
     Poller = select.epoll
     POLLIN = select.EPOLLIN
@@ -18,6 +19,7 @@ except NameError:
     POLLERR = select.POLLERR
     POLLHUP = select.POLLHUP
 
+
 class BaseIOEventHandler(object):
 
     def close(self):
@@ -26,6 +28,7 @@ class BaseIOEventHandler(object):
 
     def fileno(self):
         return self.sock.fileno()
+
 
 class IOLoop(object):
 

@@ -7,7 +7,6 @@ except ImportError:
     import simplejson as json
 import pprint
 from savate.helpers import HTTPEventHandler
-from savate import looping
 
 
 class BaseStatusClient(object):

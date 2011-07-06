@@ -3,6 +3,7 @@
 import errno
 import collections
 
+
 # FIXME: should this be a method of BufferEvent below ?
 try:
     memoryview
@@ -15,6 +16,7 @@ except NameError:
         return buffer(data)
     def buffer_slice(buff, offset):
         return buffer(buff, offset)
+
 
 class BufferOutputHandler(object):
 

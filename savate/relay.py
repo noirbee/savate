@@ -4,13 +4,16 @@ import errno
 import urlparse
 import socket
 import struct
+
 import cyhttp11
+
 from savate import looping
 from savate import sources
 from savate import helpers
 from savate.helpers import HTTPError, HTTPParseError
 from savate.sources import MPEGTSSource
 from savate import buffer_event
+
 
 class Relay(looping.BaseIOEventHandler):
 

@@ -2,10 +2,8 @@
 
 import collections
 import itertools
-from savate.sources import BufferedRawSource, StreamSource
+from savate.sources import StreamSource
 from savate.flv import FLVHeader, FLVTag, FLVAudioData, FLVVideoData
-from savate import looping
-from savate import helpers
 
 class FLVSource(StreamSource):
 

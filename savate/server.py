@@ -13,7 +13,9 @@ try:
     import json
 except ImportError:
     import simplejson as json
+
 import cyhttp11
+
 from savate import looping
 from savate import configuration
 from savate import helpers
@@ -22,6 +24,7 @@ from savate import clients
 from savate import sources
 from savate import relay
 from savate import timeouts
+
 
 class HTTPClient(looping.BaseIOEventHandler):
 
@@ -177,8 +180,10 @@ class HTTPClient(looping.BaseIOEventHandler):
                                                    b'Method Not Allowed'),
                           looping.POLLOUT)
 
+
 class InactivityTimeout(Exception):
     pass
+
 
 class TCPServer(looping.BaseIOEventHandler):
 

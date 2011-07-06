@@ -5,6 +5,7 @@ import collections
 import hashlib
 import time
 
+
 class AbstractAuthorization(object):
 
     def __init__(self, server, server_config, **config_dict):
@@ -17,6 +18,7 @@ class AbstractAuthorization(object):
         # False: NOK, 403
         # None: I don't know, move on to next auth handler
         return None
+
 
 class AbstractBasicAuthorization(AbstractAuthorization):
     """
@@ -70,15 +72,18 @@ class AbstractBasicAuthorization(AbstractAuthorization):
         else:
             return None
 
+
 class SourceBasicAuthorization(AbstractBasicAuthorization):
 
     USER_ITEM = 'source_user'
     PASSWORD_ITEM = 'source_password'
 
+
 class ClientBasicAuthorization(AbstractBasicAuthorization):
 
     USER_ITEM = 'user'
     PASSWORD_ITEM = 'password'
+
 
 class BasicAuthorization(AbstractAuthorization):
 

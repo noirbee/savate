@@ -2,11 +2,14 @@
 
 import struct
 
+
 class BinaryParserError(Exception):
     pass
 
+
 class BinaryParserEOFError(BinaryParserError):
     pass
+
 
 class BinaryParser(object):
 

@@ -3,9 +3,11 @@
 import errno
 import collections
 import signal
+
 from savate import looping
 from savate.looping import BaseIOEventHandler
 from savate import buffer_event
+
 
 def handle_eagain(func, *args, **kwargs):
     try:
@@ -47,10 +49,14 @@ def find_signal_str(signum):
             return signal_string
     return ''
 
+
 class HTTPError(Exception):
     pass
+
+
 class HTTPParseError(HTTPError):
     pass
+
 
 class HTTPEventHandler(BaseIOEventHandler):
 

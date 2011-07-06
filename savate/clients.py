@@ -2,6 +2,7 @@
 
 from savate.helpers import HTTPEventHandler
 
+
 class StreamClient(HTTPEventHandler):
 
     def __init__(self, server, source, sock, address, request_parser, content_type):

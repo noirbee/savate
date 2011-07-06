@@ -2,6 +2,7 @@
 
 from savate.binary_parser import BinaryParser
 
+
 class FLVHeader(BinaryParser):
 
     AUDIO_PRESENT = 4
@@ -19,6 +20,7 @@ class FLVHeader(BinaryParser):
         ('data_offset', 'I', 9),
         ('previous_tag_size', 'I', 0),
         )
+
 
 class FLVTag(BinaryParser):
 
@@ -56,6 +58,7 @@ class FLVTag(BinaryParser):
 
     def __str__(self):
         return '<FLVTag type %s, time %d, size %d>' % (self.tag_type, self.timestamp, self.data_size)
+
 
 class FLVVideoData(BinaryParser):
 
@@ -110,6 +113,7 @@ class FLVVideoData(BinaryParser):
         ('frame_type_and_codec', 'B', video_tag_info),
         ('avc_packet_type', 'B', lambda instance, elt: elt),
         )
+
 
 class FLVAudioData(BinaryParser):
 

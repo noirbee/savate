@@ -101,7 +101,6 @@ class ServerConfiguration(object):
                             server.logger.info('Trying to relay %s', source_url)
                             server.add_relay(source_url, path)
 
-
     def configure_authorization(self):
         conf = self.config_dict
         server = self.server
