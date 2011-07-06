@@ -9,7 +9,7 @@ Version 0.3.0~dev
 Version 0.2.0 Released on 2011/05/24
 
 	* Added graceful stop on SIGHUP.
-	* Status handlers are not pluginised (similar to auth handlers).
+	* Status handlers are now pluginised (similar to auth handlers).
 	* Added a static file status handler.
 
 Version 0.1.0 Released on 2011/05/24
