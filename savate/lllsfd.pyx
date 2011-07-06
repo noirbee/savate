@@ -30,7 +30,7 @@ class TimerFD(object):
     timerfd_create(2) manual page for a proper description of the
     underlying API / concepts.
 
-    Subsecond precision is now supported as of now.
+    Subsecond precision is not supported as of now.
     '''
 
     EXPIRATIONS_UNPACKER = struct.Struct('=Q')
