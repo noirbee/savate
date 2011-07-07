@@ -309,7 +309,7 @@ class TCPServer(looping.BaseIOEventHandler):
         else:
             for client in self.sources[source.path][source]['clients'].values():
                 client.close()
-            del self.sources[source.path][source]
+            del self.sources[source.path]
         self.loop.unregister(source)
         self.check_for_relay_restart(source)
 
