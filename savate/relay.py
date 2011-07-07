@@ -64,7 +64,7 @@ class UDPRelay(Relay):
     def handle_event(self, eventmask):
         if eventmask & looping.POLLIN:
             # FIXME: this is basically a c/c from server.py's
-            # HTTPClient's handle_read
+            # HTTPRequest's handle_read
             while True:
                 tmp_buffer = helpers.handle_eagain(self.sock.recv,
                                                    self.MIN_START_BUFFER)
@@ -149,7 +149,7 @@ class HTTPRelay(Relay):
     def handle_response(self, eventmask):
         if eventmask & looping.POLLIN:
             # FIXME: this is basically a c/c from server.py's
-            # HTTPClient's handle_read
+            # HTTPRequest's handle_read
             while True:
                 tmp_buffer = helpers.handle_eagain(self.sock.recv,
                                                    self.RESPONSE_MAX_SIZE - self.response_size)

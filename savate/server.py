@@ -25,7 +25,7 @@ from savate import relay
 from savate import timeouts
 
 
-class HTTPClient(looping.BaseIOEventHandler):
+class HTTPRequest(looping.BaseIOEventHandler):
 
     REQUEST_MAX_SIZE = 4096
 
@@ -256,7 +256,7 @@ class TCPServer(looping.BaseIOEventHandler):
     def handle_new_incoming(self):
         client_socket, client_address = self.sock.accept()
         self.logger.info('New client %s, %s', client_socket, client_address)
-        new_handler = HTTPClient(self, client_socket, client_address)
+        new_handler = HTTPRequest(self, client_socket, client_address)
         self.timeouts.update_timeout(new_handler, int(self.loop.now()) + self.INACTIVITY_TIMEOUT)
         self.loop.register(new_handler, looping.POLLIN)
 
