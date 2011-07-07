@@ -4,7 +4,6 @@ import socket
 import logging
 import collections
 import random
-import time
 import re
 import itertools
 import errno
@@ -291,7 +290,7 @@ class TCPServer(looping.BaseIOEventHandler):
         if handler.sock in self.relays:
             # It will be restarted in one second from now
             # FIXME: use real timers
-            self.relays_to_restart.append((time.time() + self.RESTART_DELAY,
+            self.relays_to_restart.append((self.loop.now() + self.RESTART_DELAY,
                                            self.relays.pop(handler.sock)))
 
     def remove_source(self, source):
@@ -341,7 +340,7 @@ class TCPServer(looping.BaseIOEventHandler):
             self.loop.once(self.LOOP_TIMEOUT)
 
             while (self.relays_to_restart and
-                   self.relays_to_restart[0][0] < time.time()):
+                   self.relays_to_restart[0][0] < self.loop.now()):
                 self.logger.info('Restarting relay %s', self.relays_to_restart[0][1])
                 tmp_relay = self.relays_to_restart.popleft()[1]
                 self.add_relay(tmp_relay.url, tmp_relay.path, tmp_relay.addr_info)
