@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 
+import collections
+import itertools
 import urlparse
 import socket
 
@@ -20,11 +22,25 @@ class ServerConfiguration(object):
         self.configure_relays()
 
     def find_relay(self, url, path, addr_info = None):
-        for relay in self.server.relays.values():
+        for relay in itertools.chain(self.server.relays.values(),
+                                     (relay for timeout, relay in self.server.relays_to_restart)):
             if (relay.url == url and relay.path == path and
                 relay.addr_info == addr_info):
                 return relay
         return None
+
+    def find_relay_conf(self, url, path):
+        for mount in self.config_dict.get('mounts', []):
+            if mount['path'] == path:
+                if url in mount.get('source_urls', []):
+                    return True
+                else:
+                    # Relay is not mentioned in the configuration
+                    return False
+        else:
+            # We failed to find the relay or its path in the
+            # configuration
+            return False
 
     def reconfigure(self, config_dict):
         self.config_dict = config_dict
@@ -41,21 +57,9 @@ class ServerConfiguration(object):
         self.server.relays = {}
 
         for relay in tmp_relays.values():
-            shutdown_relay = False
-            for mount in self.config_dict.get('mounts', []):
-                if mount['path'] == relay.path:
-                    if relay.url in mount.get('source_urls', []):
-                        self.server.relays[relay.sock] = relay
-                    else:
-                        # Relay is not mentioned in the new
-                        # configuration, mark it for shut down
-                        shutdown_relay = True
-                    break
+            if self.find_relay_conf(relay.url, relay.path):
+                self.server.relays[relay.sock] = relay
             else:
-                # We failed to find the relay or its path in the
-                # configuration
-                shutdown_relay = True
-            if shutdown_relay:
                 for sources in self.server.sources.values():
                     for source in sources:
                         if source.sock == relay.sock:
@@ -66,6 +70,19 @@ class ServerConfiguration(object):
                     else:
                         continue
                     break
+                else:
+                    # This relay has not been yet added as a source
+                    relay.close()
+
+        # Any relay marked to be restarted must be checked as well
+        tmp_relays = self.server.relays_to_restart
+        self.server.relays_to_restart = collections.deque()
+
+        for timeout, relay in tmp_relays:
+            if self.find_relay_conf(relay.url, relay.path):
+                self.server.relays_to_restart.append((timeout, relay))
+
+        # Take new configuration into account
         self.configure_relays()
 
     def configure_relays(self):
