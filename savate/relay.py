@@ -72,7 +72,7 @@ class UDPRelay(Relay):
                     # EAGAIN, we'll come back later
                     break
                 else:
-                    self.initial_buffer_data += self.initial_buffer_data + tmp_buffer
+                    self.initial_buffer_data = self.initial_buffer_data + tmp_buffer
                 if len(self.initial_buffer_data) >= self.MIN_START_BUFFER:
                     # OK, this looks like a valid source (since there
                     # is some socket activity)
