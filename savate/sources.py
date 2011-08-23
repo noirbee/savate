@@ -95,7 +95,7 @@ class BufferedRawSource(StreamSource):
             client.add_packet(packet)
 
 
-class FixedPacketSizeSource(BufferedRawSource, StreamSource):
+class FixedPacketSizeSource(BufferedRawSource):
 
     def handle_packet(self, packet):
         self.output_buffer_data = self.output_buffer_data + packet
