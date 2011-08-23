@@ -3,7 +3,7 @@
 
 import os
 import optparse
-parser = optparse.OptionParser()
+parser = optparse.OptionParser(version = '%prog @VERSION@')
 parser.set_defaults(
     config_file = '@savatesysconfdir@/savate.json',
     log_file = '@localstatedir@/log/savate/savate.log',

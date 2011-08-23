@@ -1,3 +1,7 @@
+Version 0.3.1~dev
+
+	* Added a --version command line switch.
+
 Version 0.3.0 Released on 2011/07/12
 
 	* Added a token-based (mod_auth_token-style) authorization handler.
