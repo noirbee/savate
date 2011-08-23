@@ -1,0 +1,10 @@
+#!/bin/sh
+set -e
+
+# The following snippet must be run before the debhelper ones, to
+# avoid running into http://bugs.debian.org/494288
+if which update-python-modules >/dev/null 2>&1; then
+	update-python-modules  savate.public
+fi
+
+#DEBHELPER#
