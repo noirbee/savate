@@ -1,3 +1,7 @@
+Version 0.4.0~dev
+
+	* Log requests like Apache's combined log format.
+
 Version 0.3.2 Released on 2011/09/30
 
 	* looping.py: fix epoll detection.

@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import socket
+from datetime import datetime
 import logging
 import collections
 import random
@@ -75,7 +76,7 @@ class HTTPRequest(looping.BaseIOEventHandler):
         # FIXME: should we shutdown() read or write depending on what
         # we do here ? (i.e. SHUT_RD for GETs, SHUT_WD for sources)
 
-        self.server.logger.info('%s:%s %s %s %s, request headers: %s',
+        self.server.logger.debug('%s:%s %s %s %s, request headers: %s',
                                 self.address[0], self.address[1],
                                 self.request_parser.request_method,
                                 self.request_parser.request_path,
@@ -85,6 +86,8 @@ class HTTPRequest(looping.BaseIOEventHandler):
         # Squash any consecutive / into one
         self.request_parser.request_path = re.sub('//+', '/',
                                                   self.request_parser.request_path)
+        status_code = 200
+
         # Authorization
         for auth_handler in self.server.auth_handlers:
             auth_result = auth_handler.authorize(self.address, self.request_parser)
@@ -93,13 +96,15 @@ class HTTPRequest(looping.BaseIOEventHandler):
                 break
             elif auth_result == False:
                 # Access denied
+                status_code = 403
                 loop.register(helpers.HTTPEventHandler(self.server,
                                                        self.sock,
                                                        self.address,
                                                        self.request_parser,
-                                                       403,
+                                                       status_code,
                                                        b'Forbidden'),
                               looping.POLLOUT)
+                self.log_request(status_code)
                 return
             elif auth_result == None:
                 # Move on to next handler
@@ -124,11 +129,12 @@ class HTTPRequest(looping.BaseIOEventHandler):
                 self.server.add_source(path, source)
             else:
                 self.server.logger.warning('Unrecognized Content-Type %s', content_type)
+                status_code = 501
                 loop.register(helpers.HTTPEventHandler(self.server,
                                                        self.sock,
                                                        self.address,
                                                        self.request_parser,
-                                                       501,
+                                                       status_code,
                                                        b'Not Implemented'),
                               looping.POLLOUT)
         elif self.request_parser.request_method in [b'GET']:
@@ -161,24 +167,43 @@ class HTTPRequest(looping.BaseIOEventHandler):
                                   looping.POLLOUT)
                 else:
                     # Stream does not exist
+                    status_code = 404
                     loop.register(helpers.HTTPEventHandler(self.server,
                                                            self.sock,
                                                            self.address,
                                                            self.request_parser,
-                                                           404,
+                                                           status_code,
                                                            b'Stream Not Found'),
                                   looping.POLLOUT)
 
         else:
             # Unknown HTTP request method
+            status_code = 405
             loop.register(helpers.HTTPEventHandler(self.server,
                                                    self.sock,
                                                    self.address,
                                                    self.request_parser,
-                                                   405,
+                                                   status_code,
                                                    b'Method Not Allowed'),
                           looping.POLLOUT)
 
+        self.log_request(status_code)
+
+    def log_request(self, status_code):
+        # Log as Apache's combined log format
+        user_agent = self.request_parser.headers.get('User-Agent', '-')
+        referer = self.request_parser.headers.get('Referer', '-')
+        self.server.logger.info('%s - %s [%s] "%s %s %s" %d %s "%s" "%s"',
+                                self.address[0],
+                                '-', # FIXME: replace by the username
+                                datetime.fromtimestamp(self.server.loop.now()).strftime("%d/%b/%Y:%H:%M:%S +0000"), # FIXME: make this timezone aware
+                                self.request_parser.request_method,
+                                self.request_parser.request_path,
+                                self.request_parser.http_version,
+                                status_code,
+                                '-', # FIXME: replace by the size of the request
+                                referer,
+                                user_agent)
 
 class InactivityTimeout(Exception):
     pass

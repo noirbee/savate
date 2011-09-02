@@ -2,7 +2,7 @@ Source: savate
 Priority: optional
 Section: python
 Maintainer: Nicolas Noirbent <nicolas@noirbent.fr>
-Uploaders: Nicolas Noirbent <nicolas.noirbent@smartjog.com>
+Uploaders: Nicolas Noirbent <nicolas.noirbent@smartjog.com>, Laurent Defert <laurent.defert@smartjog.com>
 Build-Depends: cdbs (>= 0.4.89), debhelper (>= 7), python-support (>= 0.8), python-dev
 Standards-Version: 3.9.2
 XS-Python-Version: >= 2.6
