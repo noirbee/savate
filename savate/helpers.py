@@ -60,21 +60,14 @@ class HTTPParseError(HTTPError):
 
 class HTTPEventHandler(BaseIOEventHandler):
 
-    def __init__(self, server, sock, address, request_parser,
-                 status, reason, headers = None, body = b''):
+    def __init__(self, server, sock, address, request_parser, response):
         self.server = server
         self.sock = sock
         self.address = address
         self.request_parser = request_parser
 
         self.output_buffer = buffer_event.BufferOutputHandler(sock)
-        data = self._build_response(status, reason, headers or {}, body)
-        self.output_buffer.add_buffer(data)
-
-    def _build_response(self, status, reason, headers, body):
-        status_line = b'HTTP/1.0 %d %s' % (status, reason)
-        headers_lines = build_http_headers(headers, body)
-        return b'\r\n'.join([status_line, headers_lines, body])
+        self.output_buffer.add_buffer(response.as_bytes())
 
     def close(self):
         self.server.timeouts.remove_timeout(self)
@@ -113,6 +106,20 @@ class HTTPEventHandler(BaseIOEventHandler):
             self.request_parser.request_path,
             self.address,
             )
+
+
+class HTTPResponse(object):
+
+    def __init__(self, status, reason, headers = None, body = b''):
+        self.status = status
+        self.reason = reason
+        self.headers = headers or {}
+        self.body = body
+
+    def as_bytes(self):
+        headers_lines = build_http_headers(self.headers, self.body)
+        status_line = b'HTTP/1.0 %d %s' % (self.status, self.reason)
+        return b'\r\n'.join([status_line, headers_lines, self.body])
 
 
 class BurstQueue(collections.deque):

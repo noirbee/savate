@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
 
-from savate.helpers import HTTPEventHandler
+from savate.helpers import HTTPEventHandler, HTTPResponse
 
 
 class StreamClient(HTTPEventHandler):
 
     def __init__(self, server, source, sock, address, request_parser, content_type):
         HTTPEventHandler.__init__(self, server, sock, address, request_parser,
-                                  200, b'OK', {b'Content-Length': None,
-                                               b'Content-Type': content_type})
+                                  HTTPResponse(200, b'OK', {b'Content-Length': None,
+                                               b'Content-Type': content_type}))
         self.source = source
 
     def add_packet(self, packet):

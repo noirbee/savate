@@ -6,7 +6,7 @@ try:
 except ImportError:
     import simplejson as json
 import pprint
-from savate.helpers import HTTPEventHandler
+from savate.helpers import HTTPEventHandler, HTTPResponse
 
 
 class BaseStatusClient(object):
@@ -24,8 +24,8 @@ class SimpleStatusClient(BaseStatusClient):
 
     def get_status(self, sock, address, request_parser):
         return HTTPEventHandler(self.server, sock, address, request_parser,
-                                200, b'OK', {b'Content-Type': 'text/plain'},
-                                pprint.pformat(self.server.sources))
+                                HTTPResponse(200, b'OK', {b'Content-Type': 'text/plain'},
+                                pprint.pformat(self.server.sources)))
 
 
 class JSONStatusClient(BaseStatusClient):
@@ -49,8 +49,8 @@ class JSONStatusClient(BaseStatusClient):
             }
 
         return HTTPEventHandler(self.server, sock, address, request_parser,
-                                200, b'OK', {b'Content-Type': 'application/json'},
-                                json.dumps(status_dict, indent = 4) + '\n')
+                                HTTPResponse(200, b'OK', {b'Content-Type': 'application/json'},
+                                json.dumps(status_dict, indent = 4) + '\n'))
 
 
 class StaticFileStatusClient(BaseStatusClient):
@@ -64,11 +64,11 @@ class StaticFileStatusClient(BaseStatusClient):
             with open(self.static_filename) as static_fileobj:
                 status_body = static_fileobj.read()
             return HTTPEventHandler(self.server, sock, address, request_parser,
-                                    200, b'OK', {b'Content-Type': 'application/octet-stream'},
-                                    status_body)
+                                    HTTPResponse(200, b'OK', {b'Content-Type': 'application/octet-stream'},
+                                    status_body))
         except IOError, exc:
             self.server.logger.exception('Error when trying to serve static status file %s:',
                                          self.static_filename)
             return HTTPEventHandler(self.server, sock, address, request_parser,
-                                    500, b'Internal Server Error', {b'Content-Type': 'text/plain'},
-                                    'Failed to open static status file\n')
+                                    HTTPResponse(500, b'Internal Server Error', {b'Content-Type': 'text/plain'},
+                                    'Failed to open static status file\n'))

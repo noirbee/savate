@@ -1,6 +1,8 @@
 Version 0.4.0~dev
 
 	* Log requests like Apache's combined log format.
+	* Add an HTTPResponse class to allow authentication error reason
+	  improvements.
 
 Version 0.3.2 Released on 2011/09/30
 

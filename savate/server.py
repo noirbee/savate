@@ -19,7 +19,7 @@ import cyhttp11
 from savate import looping
 from savate import configuration
 from savate import helpers
-from savate.helpers import HTTPError, HTTPParseError, find_signal_str
+from savate.helpers import HTTPError, HTTPParseError, HTTPResponse, find_signal_str
 from savate import clients
 from savate import sources
 from savate import relay
@@ -86,34 +86,31 @@ class HTTPRequest(looping.BaseIOEventHandler):
         # Squash any consecutive / into one
         self.request_parser.request_path = re.sub('//+', '/',
                                                   self.request_parser.request_path)
-        status_code = 200
-
         # Authorization
         for auth_handler in self.server.auth_handlers:
             auth_result = auth_handler.authorize(self.address, self.request_parser)
-            if auth_result == True:
+            if auth_result is None:
+                continue
+            elif not isinstance(auth_result, HTTPResponse):
+                # Wrong response from auth handler
+                raise RuntimeError('Wrong response from authorization handler %s' % auth_handler)
+            elif auth_result.status == 200:
                 # Request authorized
                 break
-            elif auth_result == False:
+            else:
                 # Access denied
-                status_code = 403
                 loop.register(helpers.HTTPEventHandler(self.server,
                                                        self.sock,
                                                        self.address,
                                                        self.request_parser,
-                                                       status_code,
-                                                       b'Forbidden'),
+                                                       auth_result),
                               looping.POLLOUT)
-                self.log_request(status_code)
+                self.log_request(auth_result.status)
                 return
-            elif auth_result == None:
-                # Move on to next handler
-                continue
-            else:
-                # Wrong response from auth handler
-                raise RuntimeError('Wrong response from authorization handler %s' % auth_handler)
 
         path = self.request_parser.request_path
+
+        response = None
 
         if self.request_parser.request_method in [b'PUT', b'SOURCE', b'POST']:
             # New source
@@ -129,14 +126,7 @@ class HTTPRequest(looping.BaseIOEventHandler):
                 self.server.add_source(path, source)
             else:
                 self.server.logger.warning('Unrecognized Content-Type %s', content_type)
-                status_code = 501
-                loop.register(helpers.HTTPEventHandler(self.server,
-                                                       self.sock,
-                                                       self.address,
-                                                       self.request_parser,
-                                                       status_code,
-                                                       b'Not Implemented'),
-                              looping.POLLOUT)
+                response = HTTPRequest(501, b'Not Implemented')
         elif self.request_parser.request_method in [b'GET']:
             # New client
 
@@ -146,6 +136,7 @@ class HTTPRequest(looping.BaseIOEventHandler):
                                                                            self.address,
                                                                            self.request_parser),
                               looping.POLLOUT)
+                self.log_request(200)
             else:
                 # New client for one of our sources
                 if self.server.sources.get(path, []):
@@ -165,29 +156,23 @@ class HTTPRequest(looping.BaseIOEventHandler):
                     self.server.sources[path][source]['clients'][new_client.fileno()] = new_client
                     loop.register(new_client,
                                   looping.POLLOUT)
+                    self.log_request(200)
                 else:
                     # Stream does not exist
-                    status_code = 404
-                    loop.register(helpers.HTTPEventHandler(self.server,
-                                                           self.sock,
-                                                           self.address,
-                                                           self.request_parser,
-                                                           status_code,
-                                                           b'Stream Not Found'),
-                                  looping.POLLOUT)
+                    response = HTTPResponse(404, b'Stream Not Found')
 
         else:
             # Unknown HTTP request method
-            status_code = 405
+            response = HTTPResponse(405, b'Method Not Allowed')
+
+        if response is not None:
             loop.register(helpers.HTTPEventHandler(self.server,
                                                    self.sock,
                                                    self.address,
                                                    self.request_parser,
-                                                   status_code,
-                                                   b'Method Not Allowed'),
+                                                   response),
                           looping.POLLOUT)
-
-        self.log_request(status_code)
+            self.log_request(response.status)
 
     def log_request(self, status_code):
         # Log as Apache's combined log format

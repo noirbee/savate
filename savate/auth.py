@@ -5,6 +5,10 @@ import collections
 import hashlib
 import time
 
+from helpers import HTTPResponse
+
+AUTH_SUCCESS = HTTPResponse(200, b'OK')
+AUTH_FAILURE = HTTPResponse(403, b'Forbidden')
 
 class AbstractAuthorization(object):
 
@@ -49,26 +53,26 @@ class AbstractBasicAuthorization(AbstractAuthorization):
                 if not auth_header.startswith(b'Basic '):
                     # We only know about the Basic scheme
                     # FIXME: Digest scheme support ?
-                    return False
+                    return AUTH_FAILURE
                 else:
                     try:
                         auth_string = base64.b64decode(auth_header.lstrip(b'Basic'))
                     except TypeError:
-                        return False
+                        return AUTH_FAILURE
                     if b':' not in auth_string:
                         # Malformed authorization string
-                        return False
+                        return AUTH_FAILURE
                     else:
                         auth_user, auth_password = auth_string.split(b':', 1)
                         if protected_user and protected_user != auth_user:
-                            return False
+                            return AUTH_FAILURE
                         if protected_password and protected_password != auth_password:
-                            return False
+                            return AUTH_FAILURE
                         else:
-                            return True
+                            return AUTH_SUCCESS
             else:
                 # No Authorization header provided
-                return False
+                return AUTH_FAILURE
         else:
             return None
 
@@ -131,28 +135,28 @@ class TokenAuthorization(AbstractAuthorization):
                 # FIXME: note that something is probably wrong with
                 # the configuration here, we should probably log /
                 # warn the admin
-                return False
+                return AUTH_FAILURE
             else:
                 # Get rid of prefix and slashes
                 path = path[len(prefix):].strip('/')
                 if path.count('/') < 2:
                     # Not enough components to be a tokenised path
-                    return False
+                    return AUTH_FAILURE
                 # Split into token, timestamp, and path
                 token, timestamp, path = path.split('/', 2)
                 # Check the token is valid
                 if token != hashlib.md5(secret + '/' + path + timestamp).hexdigest():
                     # Invalid token
-                    return False
+                    return AUTH_FAILURE
                 # Check the timeout is not expired, if needed
                 if timeout and (int(time.time()) - timeout) > int(timestamp, 16):
-                    return False
+                    return AUTH_FAILURE
 
                 # We have to remove the token and timestamp from the original
                 # path or else the server won't find the correct handler
                 # afterwards
                 client_request.request_path = '/'.join([prefix, path])
                 print client_request.request_path
-                return True
+                return AUTH_SUCCESS
 
         return None
