@@ -132,8 +132,9 @@ class BurstQueue(collections.deque):
         self._discard()
 
     def extend(self, iterable):
-        collections.deque.extend(self, iterable)
-        self.current_size += sum(len(data) for data in iterable)
+        for item in iterable:
+            collections.deque.append(self, item)
+            self.current_size += len(item)
         self._discard()
 
     def appendleft(self, data):

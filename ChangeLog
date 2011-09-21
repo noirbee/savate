@@ -2,6 +2,8 @@ Version 0.3.2~dev
 
 	* looping.py: fix epoll detection.
 	* binary_parser.py: allow our users not to provide a validating object.
+	* BurstQueue: fix a bug in extend() in case the iterable is a
+	  generator object.
 
 Version 0.3.1 Released on 2011/08/23
 
