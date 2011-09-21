@@ -38,10 +38,12 @@ class BinaryParser(object):
 
     def validate(self):
         for index, field_desc in enumerate(self.parse_fields):
+            field, _unpack_str = field_desc[:2]
             if len(field_desc) < 3:
                 # No validating object provided, skip it
-                continue
-            field, _unpack_str, validating_object = field_desc
+                validating_object = lambda _, x: x
+            else:
+                validating_object = field_desc[2]
             field_value = self.fields[index]
             if callable(validating_object):
                 # We have to pass self as first argument since
