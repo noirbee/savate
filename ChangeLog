@@ -1,3 +1,7 @@
+Version 0.3.2~dev
+
+	* looping.py: fix epoll detection.
+
 Version 0.3.1 Released on 2011/08/23
 
 	* Added a --version command line switch.

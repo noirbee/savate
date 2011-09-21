@@ -12,7 +12,7 @@ try:
     POLLOUT = select.EPOLLOUT
     POLLERR = select.EPOLLERR
     POLLHUP = select.EPOLLHUP
-except NameError:
+except (AttributeError, NameError):
     Poller = select.poll
     POLLIN = select.POLLIN
     POLLOUT = select.POLLOUT

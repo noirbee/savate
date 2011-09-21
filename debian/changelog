@@ -1,3 +1,9 @@
+savate (0.3.2~dev-1) unstable; urgency=low
+
+  * New upstream release.
+
+ -- Nicolas Noirbent <nicolas.noirbent@smartjog.com>  Tue, 06 Sep 2011 10:50:28 +0200
+
 savate (0.3.1-1) unstable; urgency=low
 
   * New upstream release.
