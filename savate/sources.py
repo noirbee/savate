@@ -121,6 +121,9 @@ class MPEGTSSource(FixedPacketSizeSource):
     # 1500
     RECV_BUFFER_SIZE = 7 * MPEGTS_PACKET_SIZE
 
+    TEMP_BUFFER_SIZE = 50 * RECV_BUFFER_SIZE
+    BURST_SIZE = 50 * RECV_BUFFER_SIZE
+
 
 from savate.flv_source import FLVSource
 
