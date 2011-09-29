@@ -4,6 +4,7 @@ Version 0.3.2~dev
 	* binary_parser.py: allow our users not to provide a validating object.
 	* BurstQueue: fix a bug in extend() in case the iterable is a
 	  generator object.
+	* Sources can now customise the size of the buffer passed to recv().
 
 Version 0.3.1 Released on 2011/08/23
 

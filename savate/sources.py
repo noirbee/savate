@@ -38,7 +38,7 @@ class StreamSource(looping.BaseIOEventHandler):
     def handle_event(self, eventmask):
         if eventmask & looping.POLLIN:
             while True:
-                packet = self.recv_packet()
+                packet = self.recv_packet(self.RECV_BUFFER_SIZE)
                 if packet == None:
                     # EAGAIN
                     break
@@ -111,11 +111,15 @@ class FixedPacketSizeSource(BufferedRawSource):
             self.publish_packet(tmp_data)
             self.burst_packets.append(tmp_data)
 
-
 class MPEGTSSource(FixedPacketSizeSource):
 
     MPEGTS_PACKET_SIZE = 188
     PACKET_SIZE = MPEGTS_PACKET_SIZE
+
+    # Incoming maximum buffer size; 188 * 7 = 1316 is the largest
+    # multiple of 188 that is smaller than the typical MTU size of
+    # 1500
+    RECV_BUFFER_SIZE = 7 * MPEGTS_PACKET_SIZE
 
 
 from savate.flv_source import FLVSource
