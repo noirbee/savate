@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.67])
-AC_INIT([savate], [0.3.2~dev], [nicolas@noirbent.fr])
+AC_INIT([savate], [0.3.2], [nicolas@noirbent.fr])
 
 AC_CONFIG_HEADERS([config.h])
 

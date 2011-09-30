@@ -1,4 +1,4 @@
-Version 0.3.2~dev
+Version 0.3.2 Released on 2011/09/30
 
 	* looping.py: fix epoll detection.
 	* binary_parser.py: allow our users not to provide a validating object.
