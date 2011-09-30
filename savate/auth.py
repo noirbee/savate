@@ -158,7 +158,6 @@ class TokenAuthorization(AbstractAuthorization):
                 # path or else the server won't find the correct handler
                 # afterwards
                 client_request.request_path = '/'.join([prefix, path])
-                print client_request.request_path
                 return AUTH_SUCCESS
 
         return None
