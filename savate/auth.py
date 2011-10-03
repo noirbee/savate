@@ -5,12 +5,14 @@ import collections
 import hashlib
 import time
 
-from helpers import HTTPResponse
+from savate.helpers import HTTPResponse
+
 
 AUTH_SUCCESS = HTTPResponse(200, b'OK')
 # FIXME: make the authorization realm configurable ?
 AUTH_REQUEST = HTTPResponse(401, b'Unauthorized', {b'WWW-Authenticate' : b'Basic realm="savate"'})
 AUTH_FAILURE = HTTPResponse(403, b'Forbidden')
+
 
 class AbstractAuthorization(object):
 
