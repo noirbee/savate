@@ -60,10 +60,8 @@ TODO
   it does the job, it is (obviously) lacking some nice features from a
   dedicated event loop (most notably timers and a wider platform
   support). `pyev <http://code.google.com/p/pyev/>`_ looks like a good
-  fit, although it is lacking edge-triggered operation (this
-  particular feature does not seem very common / used among other
-  event loops). `tornado <http://www.tornadoweb.org/>`_ looks very
-  close in terms of API, and would apparently not forbid us to go with
+  fit. `tornado <http://www.tornadoweb.org/>`_ looks very close in
+  terms of API, and would apparently not forbid us to go with
   edge-triggered operation, so it may well be a better short-term
   solution; it may also give us access to other tornado-based projects
   (see https://github.com/facebook/tornado/wiki/Links)
