@@ -65,9 +65,9 @@ TODO
   edge-triggered operation, so it may well be a better short-term
   solution; it may also give us access to other tornado-based projects
   (see https://github.com/facebook/tornado/wiki/Links)
-* Smarter dead/slow clients detection for FLV streaming. Instead of
-  I/O starvation ("x milliseconds without I/O"), check for clients
-  that are too late wrt the live stream.
+* Smarter dead/slow clients detection. Instead of I/O starvation ("x
+  milliseconds without I/O"), check for clients that are too late wrt
+  the live stream.
 * True HTTP/1.1; first and foremost, chunked transfer-encoding support
   for sources.
 * Free/open formats support: Ogg/Vorbis/Theora/WebM.
