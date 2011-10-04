@@ -125,6 +125,45 @@ class MPEGTSSource(FixedPacketSizeSource):
     BURST_SIZE = 50 * RECV_BUFFER_SIZE
 
 
+# Note that recvmmsg() requires Linux >= 2.6.33 and glibc >= 2.12
+# FIXME: add a configuration option
+try:
+    from savate.recvmmsg import recvmmsg
+
+    class MPEGTSSource(MPEGTSSource):
+        """
+        A specialised MPEG-TS over UDP input class that uses
+        recvmmsg() to provide a more efficient alternative than
+        multiple recv() calls.
+        """
+
+        RECV_BUFFER_COUNT_MIN = 1
+        RECV_BUFFER_COUNT_MAX = 512
+
+        def __init__(self, server, sock, address, content_type, request_parser = None, path = None):
+            super(MPEGTSSource, self).__init__(server, sock, address, content_type, request_parser, path)
+            self.recv_buffer_count = self.RECV_BUFFER_COUNT_MIN
+
+        def recv_packet(self, _buffer_size = None):
+            # We ignore _buffer_size altogether here
+            buffers = [bytearray(self.RECV_BUFFER_SIZE) for i in range(self.recv_buffer_count)]
+            buffers = helpers.handle_eagain(recvmmsg, self.sock.fileno(), buffers) or ()
+            # Automagically grow/shrink the buffer count as needed
+            if len(buffers) >= self.recv_buffer_count:
+                self.recv_buffer_count = min(self.recv_buffer_count * 2, self.RECV_BUFFER_COUNT_MAX)
+            else:
+                self.recv_buffer_count = max(len(buffers), self.RECV_BUFFER_COUNT_MIN)
+            if buffers:
+                self.server.update_activity(self)
+                return bytearray('').join(buffers)
+            else:
+                return None
+
+except ImportError:
+    # recvmmsg() is not available, we'll use regular recv() instead
+    pass
+
+
 from savate.flv_source import FLVSource
 
 sources_mapping = {

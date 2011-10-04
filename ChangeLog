@@ -5,6 +5,7 @@ Version 0.4.0~dev
 	  improvements.
 	* Return a 401 Unauthorized error when the request header doesn't
 	  contain the authentication string.
+	* Added experimental recvmmsg() support for MPEG-TS sources.
 
 Version 0.3.2 Released on 2011/09/30
 

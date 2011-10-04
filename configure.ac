@@ -14,6 +14,25 @@ AC_PROG_LIBTOOL
 AM_PATH_PYTHON
 AC_PYTHON_DEVEL
 
+# recvmmsg() support, first off the CLI switch, disabled by default
+AC_ARG_ENABLE([recvmmsg],
+                [AS_HELP_STRING([--enable-recvmmsg], [use recvmmsg() if available @<:@default=no@:>@])],
+                [
+                case "${enableval}" in
+                     yes) want_recvmmsg=yes ;;
+                     no) want_recvmmsg=no ;;
+                     *) AC_MSG_ERROR([bad value ${enableval} for --enable-recvmmsg]) ;;
+                esac
+                ],
+                [want_recvmmsg=no]
+                )
+# Then if the user enabled it, test for existence of the function
+AS_IF([test "x$want_recvmmsg" != xno],
+            [AC_CHECK_FUNC([recvmmsg])]
+            )
+# And finally define the automake conditional used by our Makefile.am
+AM_CONDITIONAL([ENABLE_RECVMMSG], [test "x$ac_cv_func_recvmmsg" = xyes])
+
 AC_SUBST([savatesysconfdir], [\$\(sysconfdir\)/savate])
 
 AC_OUTPUT([
