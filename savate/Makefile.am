@@ -16,6 +16,7 @@ pkgpyexec_PYTHON = \
 	timeouts.py
 
 pkgpyexec_LTLIBRARIES = lllsfd.la
+
 lllsfd_la_CPPFLAGS = ${AM_CPPFLAGS} ${PYTHON_CPPFLAGS}
 lllsfd_la_CFLAGS = ${AM_CFLAGS} -fno-strict-aliasing
 lllsfd_la_LDFLAGS = ${PYTHON_LDFLAGS} -avoid-version -module
