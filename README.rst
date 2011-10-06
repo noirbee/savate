@@ -31,7 +31,9 @@ Building
 If building from the git repository, you will need `Cython
 <http://cython.org/>`_.
 
-You need to be able to build Python extensions to build savate.
+You need to be able to build Python extensions to build savate. On
+most distributions this means installing the ``python-dev`` or
+``python-devel`` package.
 
 savate builds like your typical autotools-based project::
 
@@ -40,8 +42,8 @@ savate builds like your typical autotools-based project::
 Runtime
 -------
 
-You will need `cyhttp11 <http://github.com/noirbee/cyhttp11>`_ to run
-savate.
+You will need Python >= 2.6 and `cyhttp11
+<http://github.com/noirbee/cyhttp11>`_ to run savate.
 
 Development
 ===========
