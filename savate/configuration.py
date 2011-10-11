@@ -11,7 +11,6 @@ class ServerConfiguration(object):
     def __init__(self, server, config_dict):
         self.server = server
         self.config_dict = config_dict
-        # print config_dict
 
     def __getitem__(self, key):
         return self.config_dict[key]
