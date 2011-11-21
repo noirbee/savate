@@ -40,6 +40,7 @@ class HTTPRequest(looping.BaseIOEventHandler):
         self.request_parser = cyhttp11.HTTPParser()
 
     def close(self):
+        self.server.timeouts.remove_timeout(self)
         self.server.loop.unregister(self)
         looping.BaseIOEventHandler.close(self)
 
