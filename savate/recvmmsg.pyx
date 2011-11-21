@@ -50,14 +50,14 @@ def recvmmsg(int fd, object buffers, int flags = 0):
         with nogil:
             recv_messages = _recvmmsg(fd, messages_vectors, buffer_number, flags, NULL)
 
+        if recv_messages == -1:
+            global errno
+            raise IOError(errno, os.strerror(errno))
+
         for i in range(recv_messages):
             message_length = messages_vectors[i].msg_len
             if message_length != len(ret_buffers[i]):
                 ret_buffers[i] = ret_buffers[i][:message_length]
-
-        if recv_messages == -1:
-            global errno
-            raise IOError(errno, os.strerror(errno))
 
         return ret_buffers[:recv_messages]
 
