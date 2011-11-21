@@ -127,7 +127,7 @@ class HTTPRequest(looping.BaseIOEventHandler):
                 self.server.add_source(path, source)
             else:
                 self.server.logger.warning('Unrecognized Content-Type %s', content_type)
-                response = HTTPRequest(501, b'Not Implemented')
+                response = HTTPResponse(501, b'Not Implemented')
         elif self.request_parser.request_method in [b'GET']:
             # New client
 
