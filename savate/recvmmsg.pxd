@@ -29,4 +29,4 @@ cdef extern from 'sys/socket.h':
                 time_t tv_sec
                 long tv_nsec
 
-        int recvmmsg(int fd, mmsghdr *vmessages, unsigned int vlen, int flags, timespec *tmo)
+        int recvmmsg(int fd, mmsghdr *vmessages, unsigned int vlen, int flags, timespec *tmo) nogil

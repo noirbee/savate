@@ -47,7 +47,8 @@ def recvmmsg(int fd, object buffers, int flags = 0):
             messages_vectors[i].msg_hdr.msg_control = NULL
             messages_vectors[i].msg_hdr.msg_flags = 0
 
-        recv_messages = _recvmmsg(fd, messages_vectors, buffer_number, flags, NULL)
+        with nogil:
+            recv_messages = _recvmmsg(fd, messages_vectors, buffer_number, flags, NULL)
 
         for i in range(recv_messages):
             message_length = messages_vectors[i].msg_len
