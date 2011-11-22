@@ -1,9 +1,12 @@
-savate (0.4.0~dev-1) unstable; urgency=low
+savate (0.4.0-1) unstable; urgency=low
 
+  [ Laurent Defert ]
   * Add myself to Uploaders.
+
+  [ Nicolas Noirbent ]
   * New upstream release.
 
- -- Laurent Defert <laurent.defert@smartjog.com>  Fri, 02 Sep 2011 14:50:41 +0200
+ -- Nicolas Noirbent <nicolas.noirbent@smartjog.com>  Tue, 22 Nov 2011 11:43:55 +0100
 
 savate (0.3.2-1) unstable; urgency=low
 
