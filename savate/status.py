@@ -66,7 +66,7 @@ class StaticFileStatusClient(BaseStatusClient):
             return HTTPEventHandler(self.server, sock, address, request_parser,
                                     HTTPResponse(200, b'OK', {b'Content-Type': 'application/octet-stream'},
                                     status_body))
-        except IOError, exc:
+        except IOError as exc:
             self.server.logger.exception('Error when trying to serve static status file %s:',
                                          self.static_filename)
             return HTTPEventHandler(self.server, sock, address, request_parser,

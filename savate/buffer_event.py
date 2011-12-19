@@ -43,7 +43,7 @@ class BufferOutputHandler(object):
                     self.buffer_queue[0] = buffer_slice(self.buffer_queue[0], sent_bytes)
                 else:
                     self.buffer_queue.popleft()
-        except IOError, exc:
+        except IOError as exc:
             if exc.errno == errno.EAGAIN:
                 self.ready = False
             else:

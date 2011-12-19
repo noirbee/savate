@@ -12,7 +12,7 @@ from savate import buffer_event
 def handle_eagain(func, *args, **kwargs):
     try:
         return func(*args, **kwargs)
-    except IOError, exc:
+    except IOError as exc:
         if exc.errno == errno.EAGAIN:
             return None
         else:
@@ -22,7 +22,7 @@ def loop_for_eagain(func, *args, **kwargs):
     try:
         while True:
             func(*args, **kwargs)
-    except IOError, exc:
+    except IOError as exc:
         if exc.errno == errno.EAGAIN:
             pass
         else:
@@ -87,7 +87,7 @@ class HTTPEventHandler(BaseIOEventHandler):
             try:
                 self.flush()
                 self.finish()
-            except IOError, exc:
+            except IOError as exc:
                 if exc.errno in (errno.EPIPE, errno.ECONNRESET):
                     self.server.logger.error('Connection closed by %s', self)
                     self.close()

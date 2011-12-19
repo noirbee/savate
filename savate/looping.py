@@ -79,7 +79,7 @@ class IOLoop(object):
                     # i.e. 1023, when calling epoll_wait()
                     events_list = self.poller.poll(timeout, len(self.handlers) or -1)
                 break
-            except IOError, exc:
+            except IOError as exc:
                 if exc.errno == errno.EINTR:
                     continue
                 else:
@@ -91,7 +91,7 @@ class IOLoop(object):
         for fd, eventmask in self._merge_eventlists(dict(events_list)).items():
             try:
                 handler = self.handlers[fd]
-            except KeyError, exc:
+            except KeyError as exc:
                 # There's a bug somewhere. Could be epoll, could be us.
                 self.logger.error('fd %d returned by epoll() is not in self.handlers !', fd)
                 try:
@@ -101,7 +101,7 @@ class IOLoop(object):
                 continue
             try:
                 handler.handle_event(eventmask)
-            except Exception, exc:
+            except Exception as exc:
                 # We're kinda hardcore
                 self.logger.exception('Exception when handling eventmask %s for fd %s:', eventmask, fd)
                 self.unregister(handler)

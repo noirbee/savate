@@ -247,7 +247,7 @@ class TCPServer(looping.BaseIOEventHandler):
         if eventmask & looping.POLLIN:
             try:
                 helpers.loop_for_eagain(self.handle_new_incoming)
-            except IOError, exc:
+            except IOError as exc:
                 if exc.errno in (errno.EMFILE, errno.ENFILE):
                     # Too many open files
                     self.logger.error('Cannot accept, too many open files')
