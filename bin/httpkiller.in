@@ -65,8 +65,9 @@ class HTTPClient(looping.BaseIOEventHandler):
     def _build_request(self):
         # FIXME: URL encoding for the request path
         # FIXME: params, query and fragments are discarded
-        request_line = b'%s %s %s' % (self.REQUEST_METHOD, self.parsed_url.path,
-                                     self.HTTP_VERSION)
+        request_line = b'%s %s %s' % (self.REQUEST_METHOD,
+                                      self.parsed_url.path or b'/',
+                                      self.HTTP_VERSION)
         # FIXME: should we send some more headers ?
         headers_lines = helpers.build_http_headers({b'Host': self.http_host}, b'')
         # FIXME: should we send a body ?
