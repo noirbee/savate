@@ -38,7 +38,7 @@ endif
 BUILT_SOURCES = lllsfd.c recvmmsg.c
 EXTRA_DIST = lllsfd.pyx lllsfd.pxd recvmmsg.pyx recvmmsg.pxd ${BUILT_SOURCES}
 
-CLEANFILES = ${BUILT_SOURCES}
+MAINTAINERCLEANFILES = ${BUILT_SOURCES}
 
 # A kinda clever rule used to avoid writing each Cython compilation
 # rule by hand
