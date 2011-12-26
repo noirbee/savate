@@ -183,25 +183,24 @@ class HTTPRelay(Relay):
                                      (self.sock, self.address))
             self.close()
             return
-        content_type = self.response_parser.headers.get('Content-Type',
-                                                        'application/octet-stream')
+
         # FIXME: similar code is present in server.py
         loop = self.server.loop
+        self.server.logger.info('New source for %s: %s', self.path, self.address)
+
+        content_type = self.response_parser.headers.get('Content-Type',
+                                                        'application/octet-stream')
         if content_type in sources.sources_mapping:
-            self.server.logger.info('New source for %s: %s', self.path, self.address)
-            source = sources.sources_mapping[content_type](self.server,
-                                                           self.sock,
-                                                           self.address,
-                                                           content_type,
-                                                           self.response_parser,
-                                                           self.path)
-            self.server.add_source(self.path, source)
+            source_class = sources.sources_mapping[content_type]
         else:
-            self.server.logger.warning('Unrecognized Content-Type %s', content_type)
-            loop.register(helpers.HTTPEventHandler(self.server,
-                                                   self.sock,
-                                                   self.address,
-                                                   self.response_parser,
-                                                   501,
-                                                   b'Not Implemented'),
-                          looping.POLLOUT)
+            self.server.logger.warning('No registered source handler for %s, using generic handler',
+                                       content_type)
+            source_class = sources.BufferedRawSource
+
+        source = source_class(self.server,
+                              self.sock,
+                              self.address,
+                              content_type,
+                              self.response_parser,
+                              self.path)
+        self.server.add_source(path, source)

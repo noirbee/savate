@@ -115,19 +115,24 @@ class HTTPRequest(looping.BaseIOEventHandler):
 
         if self.request_parser.request_method in [b'PUT', b'SOURCE', b'POST']:
             # New source
+            self.server.logger.info('New source for %s: %s', path, self.address)
+
             content_type = self.request_parser.headers.get('Content-Type',
                                                            'application/octet-stream')
             if content_type in sources.sources_mapping:
-                self.server.logger.info('New source for %s: %s', path, self.address)
-                source = sources.sources_mapping[content_type](self.server,
-                                                               self.sock,
-                                                               self.address,
-                                                               content_type,
-                                                               self.request_parser)
-                self.server.add_source(path, source)
+                source_class = sources.sources_mapping[content_type]
             else:
-                self.server.logger.warning('Unrecognized Content-Type %s', content_type)
-                response = HTTPResponse(501, b'Not Implemented')
+                self.server.logger.warning('No registered source handler for %s, using generic handler',
+                                           content_type)
+                source_class = sources.BufferedRawSource
+
+            source = source_class(self.server,
+                                  self.sock,
+                                  self.address,
+                                  content_type,
+                                  self.request_parser)
+            self.server.add_source(path, source)
+
         elif self.request_parser.request_method in [b'GET']:
             # New client
 
