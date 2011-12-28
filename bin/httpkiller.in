@@ -41,7 +41,7 @@ class HTTPClient(looping.BaseIOEventHandler):
         self.sock.setblocking(0)
         error = self.sock.connect_ex((self.host_address,
                                       self.host_port))
-        if error != errno.EINPROGRESS:
+        if error and error != errno.EINPROGRESS:
             raise socket.error(error, os.strerror(error))
         self.handle_event = self.handle_connect
 

@@ -105,7 +105,7 @@ class HTTPRelay(Relay):
         self.sock.setblocking(0)
         error = self.sock.connect_ex((self.host_address,
                                       self.host_port))
-        if error != errno.EINPROGRESS:
+        if error and error != errno.EINPROGRESS:
             raise socket.error(error, errno.errorcode[error])
         self.handle_event = self.handle_connect
         self.server.loop.register(self, looping.POLLOUT)
