@@ -203,4 +203,4 @@ class HTTPRelay(Relay):
                               content_type,
                               self.response_parser,
                               self.path)
-        self.server.add_source(path, source)
+        self.server.add_source(self.path, source)
