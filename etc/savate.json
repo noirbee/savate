@@ -4,6 +4,7 @@
     "log_file": "/var/log/savate/savate.log",
     "pid_file": "/var/run/savate/savate.pid",
     "net_resolve_all": false,
+    "burst_size": "64k",
     "mounts": [
         {
 	    "net_resolve_all": true,
@@ -22,6 +23,13 @@
             "user": "client_username",
             "password": "client_password"
 	},
+        {
+            "path": "/example.mp3",
+            "burst_size": "128k",
+            "source_urls": [
+                "http://example.com:8000/directory/stream.mp3"
+            ]
+        },
         {
             "path": "/multicast.ts",
             "source_urls": [
