@@ -7,7 +7,7 @@ import socket
 import re
 
 
-SIZE = re.compile(r'^\d+k?$')
+SIZE_REGEXP = re.compile(r'^\d+k?$')
 
 
 class BadConfig(Exception):
@@ -24,10 +24,10 @@ def convert_burst_size(size):
         else:
             raise BadConfig('Burst size must be a positive int.')
 
-    string = str(size)
-    if SIZE.match(string):
-        size = int(string.replace('k', ''))
-        if 'k' in string:
+    size_str = str(size)
+    if SIZE_REGEXP.match(size_str):
+        size = int(size_str.replace('k', ''))
+        if 'k' in size_str:
             size *= 2 ** 10
 
         return size
