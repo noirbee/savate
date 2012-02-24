@@ -7,7 +7,7 @@
     "burst_size": "64k",
     "mounts": [
         {
-	    "net_resolve_all": true,
+            "net_resolve_all": true,
             "path": "/example/stream.flv",
             "source_urls": [
                 "http://example.com:80/stream.flv"
@@ -15,14 +15,14 @@
             "source_user": "other_user",
             "source_password": "other_password"
         },
-	{
-	    "path": "/example2.flv",
-	    "source_urls": [
-		"http://example.com:8000/directory/stream2.flv"
-	    ],
+        {
+            "path": "/example2.flv",
+            "source_urls": [
+                "http://example.com:8000/directory/stream2.flv"
+            ],
             "user": "client_username",
             "password": "client_password"
-	},
+        },
         {
             "path": "/example.mp3",
             "burst_size": "128k",
