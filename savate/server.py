@@ -364,7 +364,12 @@ class TCPServer(looping.BaseIOEventHandler):
             if self.reloading:
                 self.reloading = False
                 with open(self.config_file) as conf_file:
-                    self.config.reconfigure(json.load(conf_file))
+                    try:
+                        config_dict = json.load(conf_file)
+                    except ValueError:
+                        self.logger.exception('Bad config file:')
+                    else:
+                        self.config.reconfigure(config_dict)
 
         # FIXME: we should probably close() every source/client and
         # the server instance itself
