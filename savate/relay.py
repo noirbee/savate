@@ -17,12 +17,13 @@ from savate import buffer_event
 
 class Relay(looping.BaseIOEventHandler):
 
-    def __init__(self, server, url, path, addr_info = None):
+    def __init__(self, server, url, path, addr_info = None, burst_size = None):
         self.server = server
         self.url = url
         self.parsed_url = urlparse.urlparse(url)
         self.path = path
         self.addr_info = addr_info
+        self.burst_size = burst_size
 
     def close(self):
         self.server.timeouts.remove_timeout(self)
@@ -44,8 +45,8 @@ class UDPRelay(Relay):
     # data on our UDP socket (dead source, network issue)
     MIN_START_BUFFER = 64 * 2**10
 
-    def __init__(self, server, url, path, addr_info = None):
-        Relay.__init__(self, server, url, path, addr_info)
+    def __init__(self, server, url, path, addr_info = None, burst_size = None):
+        Relay.__init__(self, server, url, path, addr_info, burst_size)
 
         # UDP, possibly multicast input
         self.udp_address = (self.parsed_url.hostname, self.parsed_url.port)
@@ -79,7 +80,10 @@ class UDPRelay(Relay):
                     fake_response_parser = cyhttp11.HTTPClientParser()
                     fake_response_parser.body = self.initial_buffer_data
                     # FIXME: we're assuming an MPEG-TS source
-                    udp_source = MPEGTSSource(self.server, self.sock, self.udp_address, b'video/MP2T', fake_response_parser, self.path)
+                    udp_source = MPEGTSSource(self.server, self.sock,
+                                              self.udp_address, b'video/MP2T',
+                                              fake_response_parser, self.path,
+                                              self.burst_size)
                     self.server.add_source(self.path, udp_source)
                     break
 
@@ -90,8 +94,8 @@ class HTTPRelay(Relay):
     HTTP_VERSION = b'HTTP/1.1'
     RESPONSE_MAX_SIZE = 4096
 
-    def __init__(self, server, url, path, addr_info = None):
-        Relay.__init__(self, server, url, path, addr_info)
+    def __init__(self, server, url, path, addr_info = None, burst_size = None):
+        Relay.__init__(self, server, url, path, addr_info, burst_size)
 
         if addr_info:
             self.sock = socket.socket(addr_info[0], addr_info[1], addr_info[2])
@@ -202,5 +206,6 @@ class HTTPRelay(Relay):
                               self.address,
                               content_type,
                               self.response_parser,
-                              self.path)
+                              self.path,
+                              self.burst_size)
         self.server.add_source(self.path, source)

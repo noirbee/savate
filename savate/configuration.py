@@ -4,6 +4,35 @@ import collections
 import itertools
 import urlparse
 import socket
+import re
+
+
+SIZE = re.compile(r'^\d+k?$')
+
+
+class BadConfig(Exception):
+    pass
+
+
+def convert_burst_size(size):
+    if size is None:
+        return
+
+    if isinstance(size, int):
+        if size >= 0:
+            return size
+        else:
+            raise BadConfig('Burst size must be a positive int.')
+
+    string = str(size)
+    if SIZE.match(string):
+        size = int(string.replace('k', ''))
+        if 'k' in string:
+            size *= 2 ** 10
+
+        return size
+
+    raise BadConfig('Bad format for burst size.')
 
 
 class ServerConfiguration(object):
@@ -41,6 +70,17 @@ class ServerConfiguration(object):
             # configuration
             return False
 
+    def get_relay_burst_size(self, relay):
+        for mount in self.config_dict.get('mounts', ()):
+            if mount['path'] == relay.path:
+                if relay.url in mount.get('source_urls', ()):
+                    return convert_burst_size(mount.get(
+                        'burst_size',
+                        self.config_dict.get('burst_size'),
+                    ))
+                else:
+                    return
+
     def reconfigure(self, config_dict):
         self.config_dict = config_dict
         # Drop authorization and status handlers, they will be
@@ -57,6 +97,19 @@ class ServerConfiguration(object):
 
         for relay in tmp_relays.values():
             if self.find_relay_conf(relay.url, relay.path):
+                # update relay burst size
+                relay.burst_size = self.get_relay_burst_size(relay)
+
+                # update sources burst size
+                for sources in self.server.sources.itervalues():
+                    for source in sources:
+                        if source.sock == relay.sock:
+                            source.update_burst_size(relay.burst_size)
+                            break
+                    else:
+                        continue
+                    break
+
                 self.server.relays[relay.sock] = relay
             else:
                 for sources in self.server.sources.values():
@@ -87,19 +140,24 @@ class ServerConfiguration(object):
     def configure_relays(self):
         conf = self.config_dict
         server = self.server
+        global_burst_size = conf.get('burst_size', None)
 
         net_resolve_all = conf.get('net_resolve_all', False)
 
         for mount_conf in conf.get('mounts', {}):
             if 'source_urls' not in mount_conf:
                 continue
+
+            mount_burst_size = convert_burst_size(
+                mount_conf.get('burst_size', global_burst_size))
             path = mount_conf['path']
             for source_url in mount_conf['source_urls']:
                 parsed_url = urlparse.urlparse(source_url)
                 if parsed_url.scheme in ('udp', 'multicast'):
                     if not self.find_relay(source_url, path):
                         server.logger.info('Trying to relay %s', source_url)
-                        server.add_relay(source_url, path)
+                        server.add_relay(source_url, path,
+                                         burst_size=mount_burst_size)
                 else:
                     if mount_conf.get('net_resolve_all', net_resolve_all):
                         for address_info in socket.getaddrinfo(
@@ -111,11 +169,13 @@ class ServerConfiguration(object):
                             if not self.find_relay(source_url, path, address_info):
                                 server.logger.info('Trying to relay %s from %s:%s', source_url,
                                             address_info[4][0], address_info[4][1])
-                                server.add_relay(source_url, path, address_info)
+                                server.add_relay(source_url, path, address_info,
+                                                 mount_burst_size)
                     else:
                         if not self.find_relay(source_url, path):
                             server.logger.info('Trying to relay %s', source_url)
-                            server.add_relay(source_url, path)
+                            server.add_relay(source_url, path,
+                                             burst_size=mount_burst_size)
 
     def configure_authorization(self):
         conf = self.config_dict

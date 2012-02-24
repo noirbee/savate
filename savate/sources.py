@@ -9,13 +9,15 @@ class StreamSource(looping.BaseIOEventHandler):
     # Incoming maximum buffer size
     RECV_BUFFER_SIZE = 64 * 2**10
 
-    def __init__(self, server, sock, address, content_type, request_parser = None, path = None):
+    def __init__(self, server, sock, address, content_type,
+                 request_parser = None, path = None, burst_size = None):
         self.server = server
         self.sock = sock
         self.address = address
         self.content_type = content_type
         self.request_parser = request_parser
         self.path = path or self.request_parser.request_path
+        self.burst_size = burst_size
 
     def __str__(self):
         return '<%s for %s, %s, %s>' % (
@@ -66,6 +68,9 @@ class StreamSource(looping.BaseIOEventHandler):
         # Do nothing by default
         pass
 
+    def update_burst_size(self, new_burst_size):
+        pass
+
 
 class BufferedRawSource(StreamSource):
 
@@ -75,13 +80,17 @@ class BufferedRawSource(StreamSource):
     # Size of initial data burst for clients
     BURST_SIZE = 64 * 2**10
 
-    def __init__(self, server, sock, address, content_type, request_parser = None , path = None):
-        StreamSource.__init__(self, server, sock, address, content_type, request_parser, path)
+    def __init__(self, server, sock, address, content_type,
+                 request_parser = None , path = None, burst_size = None):
+        StreamSource.__init__(self, server, sock, address, content_type,
+                              request_parser, path, burst_size)
         if request_parser:
             self.output_buffer_data = request_parser.body
         else:
             self.output_buffer_data = ''
-        self.burst_packets = helpers.BurstQueue(self.BURST_SIZE)
+        if self.burst_size is None:
+            self.burst_size = self.BURST_SIZE
+        self.burst_packets = helpers.BurstQueue(self.burst_size)
 
     def handle_packet(self, packet):
         self.output_buffer_data = self.output_buffer_data + packet
@@ -93,6 +102,12 @@ class BufferedRawSource(StreamSource):
     def new_client(self, client):
         for packet in self.burst_packets:
             client.add_packet(packet)
+
+    def update_burst_size(self, new_burst_size):
+        if new_burst_size is None:
+            new_burst_size = self.BURST_SIZE
+        self.burst_size = new_burst_size
+        self.burst_packets.maxbytes = new_burst_size
 
 
 class FixedPacketSizeSource(BufferedRawSource):
@@ -140,8 +155,11 @@ try:
         RECV_BUFFER_COUNT_MIN = 1
         RECV_BUFFER_COUNT_MAX = 512
 
-        def __init__(self, server, sock, address, content_type, request_parser = None, path = None):
-            super(MPEGTSSource, self).__init__(server, sock, address, content_type, request_parser, path)
+        def __init__(self, server, sock, address, content_type,
+                     request_parser = None, path = None, burst_size = None):
+            super(MPEGTSSource, self).__init__(server, sock, address,
+                                               content_type, request_parser,
+                                               path, burst_size)
             self.recv_buffer_count = self.RECV_BUFFER_COUNT_MIN
 
         def recv_packet(self, _buffer_size = None):

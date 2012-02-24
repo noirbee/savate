@@ -279,11 +279,13 @@ class TCPServer(looping.BaseIOEventHandler):
     def configure(self):
         self.config.configure()
 
-    def add_relay(self, url, path, address_info = None):
+    def add_relay(self, url, path, address_info = None, burst_size = None):
         if urlparse.urlparse(url).scheme in ('udp', 'multicast'):
-            tmp_relay = relay.UDPRelay(self, url, path, address_info)
+            tmp_relay = relay.UDPRelay(self, url, path, address_info,
+                                       burst_size)
         else:
-            tmp_relay = relay.HTTPRelay(self, url, path, address_info)
+            tmp_relay = relay.HTTPRelay(self, url, path, address_info,
+                                        burst_size)
         self.relays[tmp_relay.sock] = tmp_relay
 
     def add_auth_handler(self, handler):
@@ -366,10 +368,9 @@ class TCPServer(looping.BaseIOEventHandler):
                 with open(self.config_file) as conf_file:
                     try:
                         config_dict = json.load(conf_file)
-                    except ValueError:
-                        self.logger.exception('Bad config file:')
-                    else:
                         self.config.reconfigure(config_dict)
+                    except (ValueError, configuration.BadConfig):
+                        self.logger.exception('Bad config file:')
 
         # FIXME: we should probably close() every source/client and
         # the server instance itself
