@@ -140,6 +140,15 @@ class MPEGTSSource(FixedPacketSizeSource):
     BURST_SIZE = 50 * RECV_BUFFER_SIZE
 
 
+class LowBitrateSource(BufferedRawSource):
+
+    # FIXME: For low bitrates MP3/AAC streams, the default temporary
+    # buffer size is too large and causes timeouts in clients; hence
+    # the use of a lower value by default
+
+    TEMP_BUFFER_SIZE = 8 * 2**10
+
+
 # Note that recvmmsg() requires Linux >= 2.6.33 and glibc >= 2.12
 # FIXME: add a configuration option
 try:
@@ -187,6 +196,8 @@ from savate.flv_source import FLVSource
 sources_mapping = {
     b'video/x-flv': FLVSource,
     b'application/x-flv': FLVSource,
+    b'audio/mpeg': LowBitrateSource,
+    b'audio/aacp': LowBitrateSource,
     b'application/octet-stream': BufferedRawSource,
     b'video/MP2T': MPEGTSSource,
     }

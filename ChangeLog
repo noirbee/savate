@@ -5,6 +5,8 @@ Version 0.5.0~dev
 	* Unknown Content-Type streams are now accepted and handled in a
 	  generic way.
 	* Fix the connect_ex() return value handling.
+	* Add a low-bitrate source type, useful to avoid timeouts on audio
+	  streams.
 
 Version 0.4.0 Released on 2011/11/22
 
