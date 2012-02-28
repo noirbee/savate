@@ -114,25 +114,7 @@ class HTTPRequest(looping.BaseIOEventHandler):
         response = None
 
         if self.request_parser.request_method in [b'PUT', b'SOURCE', b'POST']:
-            # New source
-            self.server.logger.info('New source for %s: %s', path, self.address)
-
-            content_type = self.request_parser.headers.get('Content-Type',
-                                                           'application/octet-stream')
-            if content_type in sources.sources_mapping:
-                source_class = sources.sources_mapping[content_type]
-            else:
-                self.server.logger.warning('No registered source handler for %s, using generic handler',
-                                           content_type)
-                source_class = sources.BufferedRawSource
-
-            source = source_class(self.server,
-                                  self.sock,
-                                  self.address,
-                                  content_type,
-                                  self.request_parser)
-            self.server.add_source(path, source)
-
+            self.server.add_source(path, self.sock, self.address, self.request_parser)
         elif self.request_parser.request_method in [b'GET']:
             # New client
 
@@ -294,7 +276,14 @@ class TCPServer(looping.BaseIOEventHandler):
     def add_status_handler(self, path, handler):
         self.status_handlers[path] = handler
 
-    def add_source(self, path, source):
+    def add_source(self, path, sock, address, request_parser,
+                   burst_size = None):
+        # New source
+        self.logger.info('New source for %s: %s', path, self.address)
+
+        source = sources.find_source(self, sock, address, request_parser, path,
+                                     burst_size)
+
         self.sources.setdefault(path, {})[source] = {'source': source,
                                                      'clients': {}}
         self.timeouts.update_timeout(source, int(self.loop.now()) + self.INACTIVITY_TIMEOUT)

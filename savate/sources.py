@@ -201,3 +201,22 @@ sources_mapping = {
     b'application/octet-stream': BufferedRawSource,
     b'video/MP2T': MPEGTSSource,
     }
+
+
+def find_source(server, sock, address, request_parser,
+                path = None, burst_size = None):
+    """Return a :class:`StreamSource` instance."""
+
+    content_type = request_parser.headers.get('Content-Type',
+                                      'application/octet-stream')
+    if content_type in sources_mapping:
+        stream_source = sources_mapping[content_type]
+    else:
+        server.logger.warning(
+            'No registered source handler for %s, using generic handler',
+            content_type,
+        )
+        stream_source = BufferedRawSource
+
+    return stream_source(server, sock, address, content_type, request_parser,
+                         path, burst_size)

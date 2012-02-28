@@ -188,24 +188,5 @@ class HTTPRelay(Relay):
             self.close()
             return
 
-        # FIXME: similar code is present in server.py
-        loop = self.server.loop
-        self.server.logger.info('New source for %s: %s', self.path, self.address)
-
-        content_type = self.response_parser.headers.get('Content-Type',
-                                                        'application/octet-stream')
-        if content_type in sources.sources_mapping:
-            source_class = sources.sources_mapping[content_type]
-        else:
-            self.server.logger.warning('No registered source handler for %s, using generic handler',
-                                       content_type)
-            source_class = sources.BufferedRawSource
-
-        source = source_class(self.server,
-                              self.sock,
-                              self.address,
-                              content_type,
-                              self.response_parser,
-                              self.path,
-                              self.burst_size)
-        self.server.add_source(self.path, source)
+        self.server.add_source(self.path, self.sock, self.address,
+                               self.response_parser, self.burst_size)
