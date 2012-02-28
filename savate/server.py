@@ -130,12 +130,11 @@ class HTTPRequest(looping.BaseIOEventHandler):
                 if self.server.sources.get(path, []):
                     # FIXME: proper source selection
                     source = random.choice(self.server.sources[path].keys())
-                    new_client = clients.StreamClient(self.server,
-                                                      source,
-                                                      self.sock,
-                                                      self.address,
-                                                      self.request_parser,
-                                                      source.content_type)
+                    new_client = clients.find_client(self.server,
+                                                     source,
+                                                     self.sock,
+                                                     self.address,
+                                                     self.request_parser)
                     # FIXME: this call may actually need to instatiate
                     # the client itself (e.g. if the source needs some
                     # dedicated code in its clients)

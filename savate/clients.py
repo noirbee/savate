@@ -28,3 +28,9 @@ class StreamClient(HTTPEventHandler):
         if self.output_buffer.ready:
             # De-activate handler to avoid unnecessary notifications
             self.server.loop.register(self, 0)
+
+
+def find_client(server, source, sock, address, request_parser):
+    """Returns a :class:`StreamClient` instance."""
+    return StreamClient(server, source, sock, address, request_parser,
+                        source.content_type)
