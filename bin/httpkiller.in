@@ -69,7 +69,8 @@ class HTTPClient(looping.BaseIOEventHandler):
                                       self.parsed_url.path or b'/',
                                       self.HTTP_VERSION)
         # FIXME: should we send some more headers ?
-        headers_lines = helpers.build_http_headers({b'Host': self.http_host}, b'')
+        headers_lines = helpers.build_http_headers({b'Host': self.http_host,
+                                                    b'icy-metadata': b'1'}, b'')
         # FIXME: should we send a body ?
         return b'\r\n'.join([request_line, headers_lines, b''])
 
