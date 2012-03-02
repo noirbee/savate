@@ -5,10 +5,16 @@ from savate.helpers import HTTPEventHandler, HTTPResponse
 
 class StreamClient(HTTPEventHandler):
 
-    def __init__(self, server, source, sock, address, request_parser, content_type):
+    def __init__(self, server, source, sock, address, request_parser,
+                 content_type, http_response = None):
+        if http_response is None:
+            http_response = HTTPResponse(
+                200, b'OK',
+                {b'Content-Length': None, b'Content-Type': content_type},
+            )
+
         HTTPEventHandler.__init__(self, server, sock, address, request_parser,
-                                  HTTPResponse(200, b'OK', {b'Content-Length': None,
-                                               b'Content-Type': content_type}))
+                                  http_response)
         self.source = source
 
     def add_packet(self, packet):
