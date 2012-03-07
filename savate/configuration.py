@@ -49,38 +49,6 @@ class ServerConfiguration(object):
         self.configure_status()
         self.configure_relays()
 
-    def find_relay(self, url, path, addr_info = None):
-        for relay in itertools.chain(self.server.relays.values(),
-                                     (relay for timeout, relay in self.server.relays_to_restart)):
-            if (relay.url == url and relay.path == path and
-                relay.addr_info == addr_info):
-                return relay
-        return None
-
-    def find_relay_conf(self, url, path):
-        for mount in self.config_dict.get('mounts', []):
-            if mount['path'] == path:
-                if url in mount.get('source_urls', []):
-                    return True
-                else:
-                    # Relay is not mentioned in the configuration
-                    return False
-        else:
-            # We failed to find the relay or its path in the
-            # configuration
-            return False
-
-    def get_relay_burst_size(self, relay):
-        for mount in self.config_dict.get('mounts', ()):
-            if mount['path'] == relay.path:
-                if relay.url in mount.get('source_urls', ()):
-                    return convert_burst_size(mount.get(
-                        'burst_size',
-                        self.config_dict.get('burst_size'),
-                    ))
-                else:
-                    return
-
     def reconfigure(self, config_dict):
         self.config_dict = config_dict
         # Drop authorization and status handlers, they will be
@@ -95,33 +63,40 @@ class ServerConfiguration(object):
         tmp_relays = self.server.relays
         self.server.relays = {}
 
+        # use a dict to index all relays configurations
+        # values are burstsizes or None
+        # if a relay is represented in the index, it means it exists
+        relay_index = dict((
+            (url, mount['path']),
+            convert_burst_size(mount.get('burst_size',
+                                         self.config_dict.get('burst_size'))),
+        ) for mount in self.config_dict.get(
+            'mounts', []) for url in mount.get('source_urls', []))
+        # source index same as relays but with source instances as values
+        source_index = dict((
+            source.sock,
+            source,
+        ) for sources in self.server.sources.itervalues() for source in sources)
+
         for relay in tmp_relays.values():
-            if self.find_relay_conf(relay.url, relay.path):
+            burst_size = relay_index.get((relay.url, relay.path), False)
+            if burst_size != False:
                 # update relay burst size
-                relay.burst_size = self.get_relay_burst_size(relay)
+                relay.burst_size = burst_size
 
                 # update sources burst size
-                for sources in self.server.sources.itervalues():
-                    for source in sources:
-                        if source.sock == relay.sock:
-                            source.update_burst_size(relay.burst_size)
-                            break
-                    else:
-                        continue
-                    break
+                source = source_index.get(relay.sock)
+                if source is not None:
+                    source.update_burst_size(relay.burst_size)
 
                 self.server.relays[relay.sock] = relay
             else:
-                for sources in self.server.sources.values():
-                    for source in sources:
-                        if source.sock == relay.sock:
-                            self.server.logger.info('Dropping source %s since it has been removed from configuration',
-                                                    source)
-                            source.close()
-                            break
-                    else:
-                        continue
-                    break
+                source = source_index.get(relay.sock)
+                if source is not None:
+                    self.server.logger.info('Dropping source %s since it has '
+                                            'been removed from configuration',
+                                            source)
+                    source.close()
                 else:
                     # This relay has not been yet added as a source
                     relay.close()
@@ -131,7 +106,7 @@ class ServerConfiguration(object):
         self.server.relays_to_restart = collections.deque()
 
         for timeout, relay in tmp_relays:
-            if self.find_relay_conf(relay.url, relay.path):
+            if (relay.url, relay.path) in relay_index:
                 self.server.relays_to_restart.append((timeout, relay))
 
         # Take new configuration into account
@@ -144,6 +119,16 @@ class ServerConfiguration(object):
 
         net_resolve_all = conf.get('net_resolve_all', False)
 
+
+        # index
+        relay_index = dict((
+            (relay.url, relay.path, relay.addr_info),
+            relay,
+        ) for relay in itertools.chain(
+            self.server.relays.itervalues(),
+            (relay for timeout, relay in self.server.relays_to_restart),
+        ))
+
         for mount_conf in conf.get('mounts', {}):
             if 'source_urls' not in mount_conf:
                 continue
@@ -154,7 +139,7 @@ class ServerConfiguration(object):
             for source_url in mount_conf['source_urls']:
                 parsed_url = urlparse.urlparse(source_url)
                 if parsed_url.scheme in ('udp', 'multicast'):
-                    if not self.find_relay(source_url, path):
+                    if (source_url, path) not in relay_index:
                         server.logger.info('Trying to relay %s', source_url)
                         server.add_relay(source_url, path,
                                          burst_size=mount_burst_size)
@@ -166,13 +151,14 @@ class ServerConfiguration(object):
                             socket.AF_UNSPEC,
                             socket.SOCK_STREAM,
                             socket.IPPROTO_TCP):
-                            if not self.find_relay(source_url, path, address_info):
+                            if (source_url, path,
+                                address_info) not in relay_index:
                                 server.logger.info('Trying to relay %s from %s:%s', source_url,
                                             address_info[4][0], address_info[4][1])
                                 server.add_relay(source_url, path, address_info,
                                                  mount_burst_size)
                     else:
-                        if not self.find_relay(source_url, path):
+                        if (source_url, path) not in relay_index:
                             server.logger.info('Trying to relay %s', source_url)
                             server.add_relay(source_url, path,
                                              burst_size=mount_burst_size)
