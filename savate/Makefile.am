@@ -7,6 +7,7 @@ pkgpyexec_PYTHON = \
 	configuration.py \
 	flv.py \
 	flv_source.py \
+	shoutcast_source.py \
 	helpers.py \
 	looping.py \
 	relay.py \

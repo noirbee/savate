@@ -135,7 +135,10 @@ class HTTPRelay(Relay):
         request_line = b'%s %s %s' % (self.REQUEST_METHOD, self.parsed_url.path,
                                      self.HTTP_VERSION)
         # FIXME: should we send some more headers ?
-        headers_lines = helpers.build_http_headers({b'Host': self.parsed_url.hostname}, b'')
+        headers_lines = helpers.build_http_headers({
+            b'Host': self.parsed_url.hostname,
+            b'icy-metadata': b'1',
+        }, b'')
         # FIXME: should we send a body ?
         return bytes(b'\r\n'.join([request_line, headers_lines, b'']))
 
