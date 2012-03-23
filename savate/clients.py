@@ -52,7 +52,8 @@ class ShoutcastClient(StreamClient):
                 headers[b'icy-%s' % header] = header_value
 
         # did client asked for metadata ?
-        if request_parser.headers.get('Icy-Metadata') == b'1':
+        if request_parser.headers.get('Icy-Metadata') == b'1' and hasattr(
+            source, 'metadata'):
             self.metadata = b''
             self.bytes_count = 0
             self.add_packet = self.add_packet_with_metadata
