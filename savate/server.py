@@ -278,7 +278,7 @@ class TCPServer(looping.BaseIOEventHandler):
     def add_source(self, path, sock, address, request_parser,
                    burst_size = None):
         # New source
-        self.logger.info('New source for %s: %s', path, self.address)
+        self.logger.info('New source for %s: %s', path, address)
 
         source = sources.find_source(self, sock, address, request_parser, path,
                                      burst_size)
