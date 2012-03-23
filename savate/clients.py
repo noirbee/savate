@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from savate.helpers import HTTPEventHandler, HTTPResponse, Buffer
+from savate.sources import ShoutcastSource
 
 
 class StreamClient(HTTPEventHandler):
@@ -95,7 +96,7 @@ class ShoutcastClient(StreamClient):
 
 def find_client(server, source, sock, address, request_parser):
     """Returns a :class:`StreamClient` instance."""
-    if source.request_parser.headers.get('Content-Type') == b'audio/mpeg':
+    if isinstance(source, ShoutcastSource):
         client = ShoutcastClient
     else:
         client = StreamClient
