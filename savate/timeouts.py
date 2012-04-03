@@ -15,11 +15,12 @@ class Timeouts(BaseIOEventHandler):
         # A handler -> timestamp dict
         self.handlers_timeouts = {}
 
+    @property
     def min_expiration(self):
-        return sorted(self.timeouts.keys())[0]
+        return min(self.timeouts)
 
     def update_timeout(self, handler, expiration):
-        if (not self.timeouts) or (expiration < self.min_expiration()):
+        if (not self.timeouts) or (expiration < self.min_expiration):
             # Specified expiration is earlier that our current one,
             # update our timer
             self.timer.settime(expiration, flags = TFD_TIMER_ABSTIME)
@@ -42,7 +43,7 @@ class Timeouts(BaseIOEventHandler):
             # avoid some strange poll-ability bugs
             self.timer.read()
             # Timer expired
-            expiration = self.min_expiration()
+            expiration = self.min_expiration
 
             # We use this instead of iterating on
             # self.timeouts[expiration] because closing one of the
@@ -60,6 +61,6 @@ class Timeouts(BaseIOEventHandler):
             del self.timeouts[expiration]
             if self.timeouts:
                 # Reset the timer to the earliest one
-                self.timer.settime(self.min_expiration(), flags = TFD_TIMER_ABSTIME)
+                self.timer.settime(self.min_expiration, flags = TFD_TIMER_ABSTIME)
         else:
             self.server.logger.error('%s: unexpected eventmask %d (%s)', self, eventmask, event_mask_str(eventmask))
