@@ -250,11 +250,29 @@ class TCPServer(looping.BaseIOEventHandler):
                 else:
                     raise
 
+    def reset_inactivity_timeout(self, handler):
+        self.timeouts.reset_timeout(
+            handler,
+            int(self.loop.now()) + self.INACTIVITY_TIMEOUT,
+            self.fired_inactivity_timeout,
+            handler,
+        )
+
+    def fired_inactivity_timeout(self, handler):
+        """Method which might be called when an inactivity timeout occurs.
+        For example on a source or a client.
+
+        """
+        self.logger.error('Timeout for %s: %d seconds without I/O' %
+                                 (handler, self.INACTIVITY_TIMEOUT))
+        handler.close()
+
     def handle_new_incoming(self):
         client_socket, client_address = self.sock.accept()
         self.logger.info('New client %s, %s', client_socket, client_address)
         new_handler = HTTPRequest(self, client_socket, client_address)
-        self.timeouts.update_timeout(new_handler, int(self.loop.now()) + self.INACTIVITY_TIMEOUT)
+        self.reset_inactivity_timeout(new_handler)
+
         self.loop.register(new_handler, looping.POLLIN)
 
     def configure(self):
@@ -285,11 +303,11 @@ class TCPServer(looping.BaseIOEventHandler):
 
         self.sources.setdefault(path, {})[source] = {'source': source,
                                                      'clients': {}}
-        self.timeouts.update_timeout(source, int(self.loop.now()) + self.INACTIVITY_TIMEOUT)
+        self.reset_inactivity_timeout(source)
         self.loop.register(source, looping.POLLIN)
 
     def update_activity(self, handler):
-        self.timeouts.update_timeout(handler, int(self.loop.now()) + self.INACTIVITY_TIMEOUT)
+        self.reset_inactivity_timeout(handler)
 
     def check_for_relay_restart(self, handler):
         # If this is one of our relays, mark it for restart

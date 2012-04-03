@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 
+from functools import partial
+
 from savate.looping import BaseIOEventHandler, POLLIN
 from savate.lllsfd import TimerFD, CLOCK_REALTIME, TFD_TIMER_ABSTIME
 
@@ -10,7 +12,7 @@ class Timeouts(BaseIOEventHandler):
         BaseIOEventHandler.__init__(self)
         self.server = server
         self.timer = self.sock = TimerFD(clockid = CLOCK_REALTIME)
-        # A timestamp -> {handlers} dict
+        # A timestamp -> {handlers: callbacks} dict
         self.timeouts = {}
         # A handler -> timestamp dict
         self.handlers_timeouts = {}
@@ -19,7 +21,7 @@ class Timeouts(BaseIOEventHandler):
     def min_expiration(self):
         return min(self.timeouts)
 
-    def update_timeout(self, handler, expiration):
+    def update_timeout(self, handler, expiration, callback, *args, **kwargs):
         if (not self.timeouts) or (expiration < self.min_expiration):
             # Specified expiration is earlier that our current one,
             # update our timer
@@ -29,8 +31,11 @@ class Timeouts(BaseIOEventHandler):
         if handler.sock in self.handlers_timeouts:
             old_expiration = self.handlers_timeouts[handler.sock]
             self.timeouts[old_expiration].pop(handler.sock)
+        # Construct the callback
+        if args or kwargs:  # arguments supplied
+            callback = partial(callback, *args, **kwargs)
         self.handlers_timeouts[handler.sock] = expiration
-        self.timeouts.setdefault(expiration, {})[handler.sock] = handler
+        self.timeouts.setdefault(expiration, {})[handler.sock] = callback
 
     def remove_timeout(self, handler):
         if handler.sock in self.handlers_timeouts:
@@ -53,11 +58,9 @@ class Timeouts(BaseIOEventHandler):
             # timed out will be dropped, and removed from the timeouts
             # list)
             while self.timeouts[expiration]:
-                sock, timed_out_handler = self.timeouts[expiration].popitem()
-                self.server.logger.error('Timeout for %s: %d seconds without I/O' %
-                                         (timed_out_handler, self.server.INACTIVITY_TIMEOUT))
+                sock, callback = self.timeouts[expiration].popitem()
                 self.handlers_timeouts.pop(sock)
-                timed_out_handler.close()
+                callback()
             del self.timeouts[expiration]
             if self.timeouts:
                 # Reset the timer to the earliest one
