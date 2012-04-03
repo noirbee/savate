@@ -45,18 +45,21 @@ class ServerConfiguration(object):
         return self.config_dict[key]
 
     def configure(self):
+        self.configure_stats()
         self.configure_authorization()
         self.configure_status()
         self.configure_relays()
 
     def reconfigure(self, config_dict):
         self.config_dict = config_dict
-        # Drop authorization and status handlers, they will be
+        # Drop authorization, status and statistics handlers, they will be
         # properly re-created anyway
         self.server.auth_handlers = []
         self.server.status_handlers = {}
+        self.server.statistics_handlers = []
         self.configure_authorization()
         self.configure_status()
+        self.configure_stats()
 
         # Here comes the tricky part: identifying which relays we need
         # to drop
@@ -189,4 +192,13 @@ class ServerConfiguration(object):
             handler_instance = handler_class(server, conf, **status_handler)
             server.add_status_handler(handler_path, handler_instance)
 
-
+    def configure_stats(self):
+        conf = self.config_dict
+        server = self.server
+        for stat_handler in conf.get('statistics', {}):
+            handler_name = stat_handler['handler']
+            handler_module, handler_class = handler_name.rsplit('.', 1)
+            handler_module = __import__(handler_module, {}, {}, [''])
+            handler_class = getattr(handler_module, handler_class)
+            handler_instance = handler_class(server, **stat_handler)
+            self.server.add_stats_handler(handler_instance)

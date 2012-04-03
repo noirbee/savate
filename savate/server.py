@@ -87,6 +87,9 @@ class HTTPRequest(looping.BaseIOEventHandler):
         # Squash any consecutive / into one
         self.request_parser.request_path = re.sub('//+', '/',
                                                   self.request_parser.request_path)
+
+        self.server.request_in(self.request_parser, self.sock)
+
         # Authorization
         for auth_handler in self.server.auth_handlers:
             auth_result = auth_handler.authorize(self.address, self.request_parser)
@@ -106,7 +109,6 @@ class HTTPRequest(looping.BaseIOEventHandler):
                                                        self.request_parser,
                                                        auth_result),
                               looping.POLLOUT)
-                self.log_request(auth_result.status)
                 return
 
         path = self.request_parser.request_path
@@ -125,7 +127,6 @@ class HTTPRequest(looping.BaseIOEventHandler):
                                                                            self.address,
                                                                            self.request_parser),
                               looping.POLLOUT)
-                self.log_request(200)
             else:
                 # New client for one of our sources
                 if self.server.sources.get(path, []):
@@ -144,7 +145,6 @@ class HTTPRequest(looping.BaseIOEventHandler):
                     self.server.sources[path][source]['clients'][new_client.fileno()] = new_client
                     loop.register(new_client,
                                   looping.POLLOUT)
-                    self.log_request(200)
                 else:
                     # Stream does not exist
                     response = HTTPResponse(404, b'Stream Not Found')
@@ -160,23 +160,7 @@ class HTTPRequest(looping.BaseIOEventHandler):
                                                    self.request_parser,
                                                    response),
                           looping.POLLOUT)
-            self.log_request(response.status)
 
-    def log_request(self, status_code):
-        # Log as Apache's combined log format
-        user_agent = self.request_parser.headers.get('User-Agent', '-')
-        referer = self.request_parser.headers.get('Referer', '-')
-        self.server.logger.info('%s - %s [%s] "%s %s %s" %d %s "%s" "%s"',
-                                self.address[0],
-                                '-', # FIXME: replace by the username
-                                datetime.fromtimestamp(self.server.loop.now()).strftime("%d/%b/%Y:%H:%M:%S +0000"), # FIXME: make this timezone aware
-                                self.request_parser.request_method,
-                                self.request_parser.request_path,
-                                self.request_parser.http_version,
-                                status_code,
-                                '-', # FIXME: replace by the size of the request
-                                referer,
-                                user_agent)
 
 class InactivityTimeout(Exception):
     pass
@@ -208,6 +192,7 @@ class TCPServer(looping.BaseIOEventHandler):
         self.relays_to_restart = collections.deque()
         self.auth_handlers = []
         self.status_handlers = {}
+        self.statistics_handlers = []
         self.state = self.STATE_RUNNING
         self.reloading = False
         self.timeouts = None
@@ -273,6 +258,16 @@ class TCPServer(looping.BaseIOEventHandler):
     def configure(self):
         self.config.configure()
 
+    def request_in(self, request_parser, sock):
+        for stat in self.statistics_handlers:
+            stat.request_in(request_parser, sock)
+
+    def request_out(self, request_parser, sock, address, size=0, duration=0,
+                    status_code=200):
+        for stat in self.statistics_handlers:
+            stat.request_out(request_parser, sock, address, size, duration,
+                             status_code)
+
     def add_relay(self, url, path, address_info = None, burst_size = None,
                   on_demand = False):
         if urlparse.urlparse(url).scheme in ('udp', 'multicast'):
@@ -288,6 +283,9 @@ class TCPServer(looping.BaseIOEventHandler):
 
     def add_status_handler(self, path, handler):
         self.status_handlers[path] = handler
+
+    def add_stats_handler(self, handler):
+        self.statistics_handlers.append(handler)
 
     def add_source(self, path, sock, address, request_parser,
                    burst_size = None):
@@ -344,6 +342,7 @@ class TCPServer(looping.BaseIOEventHandler):
         self.io_timeouts.remove_timeout(client)
 
         source = client.source
+        # FIXME: what to do with this one ?
         self.logger.info('Dropping client for path %s, %s', source.path,
                          client.address)
         self.loop.unregister(client)

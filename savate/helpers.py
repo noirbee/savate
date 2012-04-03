@@ -76,6 +76,8 @@ class HTTPEventHandler(BaseIOEventHandler):
 
     def close(self):
         self.server.remove_inactivity_timeout(self)
+        self.server.request_out(self.request_parser, self.sock, self.address, self.bytes_sent,
+                                self.connect_time, self.status)
         self.server.loop.unregister(self)
         BaseIOEventHandler.close(self)
 

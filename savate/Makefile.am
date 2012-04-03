@@ -12,6 +12,7 @@ pkgpyexec_PYTHON = \
 	looping.py \
 	relay.py \
 	server.py \
+	stats.py \
 	status.py \
 	sources.py \
 	timeouts.py

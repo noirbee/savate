@@ -45,6 +45,11 @@
             ]
         }
     ],
+    "statistics": [
+        {
+            "handler": "savate.stats.ApacheLogger"
+        }
+    ],
     "auth": [
         {
             "handler": "savate.auth.BasicAuthorization",
