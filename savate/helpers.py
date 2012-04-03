@@ -69,14 +69,21 @@ class HTTPEventHandler(BaseIOEventHandler):
         self.output_buffer = buffer_event.BufferOutputHandler(sock)
         self.output_buffer.add_buffer(response.as_bytes())
 
+        # statistics
+        self.status = response.status
+        self.connect_time = server.loop.now()
+        self.bytes_sent = 0
+
     def close(self):
         self.server.remove_inactivity_timeout(self)
         self.server.loop.unregister(self)
         BaseIOEventHandler.close(self)
 
     def flush(self):
-        if self.output_buffer.flush():
+        bytes_sent = self.output_buffer.flush()
+        if bytes_sent:
             self.server.update_activity(self)
+            self.bytes_sent += bytes_sent
 
     def finish(self):
         if self.output_buffer.empty():
