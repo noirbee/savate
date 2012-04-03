@@ -36,8 +36,16 @@ nodist_recvmmsg_la_SOURCES = recvmmsg.c
 
 endif
 
-BUILT_SOURCES = lllsfd.c recvmmsg.c
-EXTRA_DIST = lllsfd.pyx lllsfd.pxd recvmmsg.pyx recvmmsg.pxd ${BUILT_SOURCES}
+pkgpyexec_LTLIBRARIES += audio_parser.la
+
+audio_parser_la_CPPFLAGS = ${AM_CPPFLAGS} ${PYTHON_CPPFLAGS}
+audio_parser_la_CFLAGS = ${AM_CFLAGS} -fno-strict-aliasing
+audio_parser_la_LDFLAGS = ${PYTHON_LDFLAGS} -avoid-version -module
+
+nodist_audio_parser_la_SOURCES = audio_parser.c
+
+BUILT_SOURCES = lllsfd.c recvmmsg.c audio_parser.c
+EXTRA_DIST = lllsfd.pyx lllsfd.pxd recvmmsg.pyx recvmmsg.pxd audio_parser.pyx audio_parser.pxd ${BUILT_SOURCES}
 
 MAINTAINERCLEANFILES = ${BUILT_SOURCES}
 
