@@ -74,6 +74,9 @@ cdef class AbstractAudioParser:
 
         return frames
 
+    def clear(self):
+      self.buffer = b''
+
     cdef handle_error(self):
         # when a parsing error occurs, try to parse MIN_SYNC_FRAMES
         while True:
