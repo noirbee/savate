@@ -5,6 +5,7 @@
     "pid_file": "/var/run/savate/savate.pid",
     "net_resolve_all": false,
     "burst_size": "64k",
+    "on_demand": false,
     "mounts": [
         {
             "net_resolve_all": true,
@@ -26,6 +27,7 @@
         {
             "path": "/example.mp3",
             "burst_size": "128k",
+            "on_demand": true,
             "source_urls": [
                 "http://example.com:8000/directory/stream.mp3"
             ]
