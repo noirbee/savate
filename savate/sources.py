@@ -192,12 +192,14 @@ except ImportError:
 
 
 from savate.flv_source import FLVSource
-from savate.shoutcast_source import ShoutcastSource
+from savate.shoutcast_source import (
+    ShoutcastSource, MP3ShoutcastSource,
+)
 
 sources_mapping = {
     b'video/x-flv': FLVSource,
     b'application/x-flv': FLVSource,
-    b'audio/mpeg': ShoutcastSource,
+    b'audio/mpeg': MP3ShoutcastSource,
     b'audio/aacp': LowBitrateSource,
     b'application/octet-stream': BufferedRawSource,
     b'video/MP2T': MPEGTSSource,

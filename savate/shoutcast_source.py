@@ -2,6 +2,7 @@
 
 from savate.helpers import Buffer
 from savate.sources import LowBitrateSource
+from savate.mp3 import MP3Parser
 
 
 class ShoutcastSource(LowBitrateSource):
@@ -71,3 +72,13 @@ class ShoutcastSource(LowBitrateSource):
         if packet:
             self.publish_packet(packet)
             self.burst_packets.append(packet)
+
+
+class MP3ShoutcastSource(ShoutcastSource):
+    """Shoutcast Source with MP3 frames parsing support."""
+    def __init__(self, server, sock, address, content_type, request_parser,
+                 path = None, burst_size = None):
+        ShoutcastSource.__init__(self, server, sock, address, content_type,
+                                 request_parser, path, burst_size)
+
+        self.frame_parser = MP3Parser()
