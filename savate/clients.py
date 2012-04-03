@@ -112,4 +112,4 @@ def find_client(server, source, sock, address, request_parser):
         client = StreamClient
 
     return client(server, source, sock, address, request_parser,
-                        source.content_type)
+                  source.content_type)
