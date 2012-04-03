@@ -17,6 +17,13 @@ class StreamClient(HTTPEventHandler):
         HTTPEventHandler.__init__(self, server, sock, address, request_parser,
                                   http_response)
         self.source = source
+        self.timeout_state = False
+        self.server.remove_inactivity_timeout(self)
+
+    def activate_timeout(self):
+        if not self.timeout_state:
+            self.timeout_state = True
+            self.server.reset_inactivity_timeout(self)
 
     def add_packet(self, packet):
         self.output_buffer.add_buffer(packet)
@@ -35,6 +42,9 @@ class StreamClient(HTTPEventHandler):
         if self.output_buffer.ready:
             # De-activate handler to avoid unnecessary notifications
             self.server.loop.register(self, 0)
+            # desactivate timer if output_buffer is empty
+            self.server.remove_inactivity_timeout(self)
+            self.timeout_state = False
 
 
 class ShoutcastClient(StreamClient):

@@ -357,6 +357,7 @@ class TCPServer(looping.BaseIOEventHandler):
         for client in self.sources[source.path][source]['clients'].values():
             client.add_packet(packet)
             self.loop.inject_event(client.fileno(), looping.POLLOUT)
+            client.activate_timeout()
 
     def serve_forever(self):
         while (self.state == self.STATE_RUNNING or
