@@ -97,6 +97,12 @@ class HTTPRelay(Relay):
     def __init__(self, server, url, path, addr_info = None, burst_size = None):
         Relay.__init__(self, server, url, path, addr_info, burst_size)
 
+        self.create_socket()
+        self.register()
+
+    def create_socket(self):
+        addr_info = self.addr_info
+
         if addr_info:
             self.sock = socket.socket(addr_info[0], addr_info[1], addr_info[2])
             self.host_address = addr_info[4][0]
@@ -111,6 +117,8 @@ class HTTPRelay(Relay):
                                       self.host_port))
         if error and error != errno.EINPROGRESS:
             raise socket.error(error, errno.errorcode[error])
+
+    def register(self):
         self.handle_event = self.handle_connect
         self.server.loop.register(self, looping.POLLOUT)
         self.server.update_activity(self)
