@@ -52,6 +52,12 @@ class ServerConfiguration(object):
 
     def reconfigure(self, config_dict):
         self.config_dict = config_dict
+        # authorization, status and statistics handlers may have a close method
+        for handler in itertools.chain(self.server.auth_handlers,
+                                       self.server.status_handlers,
+                                       self.server.statistics_handlers):
+            if callable(getattr(handler, 'close', None)):
+                handler.close()
         # Drop authorization, status and statistics handlers, they will be
         # properly re-created anyway
         self.server.auth_handlers = []
