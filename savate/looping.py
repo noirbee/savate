@@ -58,8 +58,15 @@ class IOLoop(object):
         return events_list
 
     def unregister(self, io_event_handler):
-        # FIXME: this may need some exception handling
-        fd = io_event_handler.fileno()
+        try:
+            fd = io_event_handler.fileno()
+        except IOError as exc:
+            # already unregistered
+            if exc.errno != errno.EBADF:
+                raise
+            # FIXME: do we need to handle more exceptions ?
+            return
+
         if fd in self.handlers:
             self.poller.unregister(fd)
             del self.handlers[fd]
