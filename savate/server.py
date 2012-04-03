@@ -40,7 +40,7 @@ class HTTPRequest(looping.BaseIOEventHandler):
         self.request_parser = cyhttp11.HTTPParser()
 
     def close(self):
-        self.server.timeouts.remove_timeout(self)
+        self.server.remove_inactivity_timeout(self)
         self.server.loop.unregister(self)
         looping.BaseIOEventHandler.close(self)
 
@@ -210,6 +210,7 @@ class TCPServer(looping.BaseIOEventHandler):
         self.state = self.STATE_RUNNING
         self.reloading = False
         self.timeouts = None
+        self.io_timeouts = None
 
     def create_loop(self):
         self.loop = looping.IOLoop(self.logger)
@@ -228,6 +229,7 @@ class TCPServer(looping.BaseIOEventHandler):
         # initialise here to avoid having it closed by daemonisation
         if not self.timeouts:
             self.timeouts = timeouts.Timeouts(self)
+            self.io_timeouts = timeouts.IOTimeout(self.timeouts)
 
     def handle_event(self, eventmask):
         if eventmask & looping.POLLIN:
@@ -251,21 +253,13 @@ class TCPServer(looping.BaseIOEventHandler):
                     raise
 
     def reset_inactivity_timeout(self, handler):
-        self.timeouts.reset_timeout(
+        self.io_timeouts.reset_timeout(
             handler,
             int(self.loop.now()) + self.INACTIVITY_TIMEOUT,
-            self.fired_inactivity_timeout,
-            handler,
         )
 
-    def fired_inactivity_timeout(self, handler):
-        """Method which might be called when an inactivity timeout occurs.
-        For example on a source or a client.
-
-        """
-        self.logger.error('Timeout for %s: %d seconds without I/O' %
-                                 (handler, self.INACTIVITY_TIMEOUT))
-        handler.close()
+    def remove_inactivity_timeout(self, handler):
+        self.io_timeouts.remove_timeout(handler)
 
     def handle_new_incoming(self):
         client_socket, client_address = self.sock.accept()
@@ -319,7 +313,7 @@ class TCPServer(looping.BaseIOEventHandler):
 
     def remove_source(self, source):
         # De-activate the timeout handling for this source
-        self.timeouts.remove_timeout(source)
+        self.remove_inactivity_timeout(source)
         # FIXME: client shutdown
         if len(self.sources[source.path]) > 1:
             # There is at least one other source for this path,
@@ -339,7 +333,7 @@ class TCPServer(looping.BaseIOEventHandler):
 
     def remove_client(self, client):
         # De-activate the timeout handling for this client
-        self.timeouts.remove_timeout(client)
+        self.io_timeouts.remove_timeout(client)
 
         source = client.source
         self.logger.info('Dropping client for path %s, %s', source.path,

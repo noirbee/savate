@@ -26,7 +26,7 @@ class Relay(looping.BaseIOEventHandler):
         self.burst_size = burst_size
 
     def close(self):
-        self.server.timeouts.remove_timeout(self)
+        self.server.remove_inactivity_timeout(self)
         self.server.loop.unregister(self)
         self.server.check_for_relay_restart(self)
         looping.BaseIOEventHandler.close(self)

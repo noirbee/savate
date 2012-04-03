@@ -70,7 +70,7 @@ class HTTPEventHandler(BaseIOEventHandler):
         self.output_buffer.add_buffer(response.as_bytes())
 
     def close(self):
-        self.server.timeouts.remove_timeout(self)
+        self.server.remove_inactivity_timeout(self)
         self.server.loop.unregister(self)
         BaseIOEventHandler.close(self)
 
