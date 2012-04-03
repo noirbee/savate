@@ -362,7 +362,8 @@ class TCPServer(looping.BaseIOEventHandler):
                    self.relays_to_restart[0][0] < self.loop.now()):
                 self.logger.info('Restarting relay %s', self.relays_to_restart[0][1])
                 tmp_relay = self.relays_to_restart.popleft()[1]
-                self.add_relay(tmp_relay.url, tmp_relay.path, tmp_relay.addr_info)
+                self.add_relay(tmp_relay.url, tmp_relay.path,
+                               tmp_relay.addr_info, tmp_relay.burst_size)
 
             if self.reloading:
                 self.reloading = False
