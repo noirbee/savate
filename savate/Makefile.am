@@ -52,13 +52,24 @@ mp3_la_LDFLAGS = ${PYTHON_LDFLAGS} -avoid-version -module
 
 nodist_mp3_la_SOURCES = mp3.c mp3_static.c
 
-BUILT_SOURCES = lllsfd.c recvmmsg.c audio_parser.c
-EXTRA_DIST = lllsfd.pyx lllsfd.pxd recvmmsg.pyx recvmmsg.pxd audio_parser.pyx audio_parser.pxd mp3.pyx ${BUILT_SOURCES}
+pkgpyexec_LTLIBRARIES += adts.la
 
-MAINTAINERCLEANFILES = mp3.c ${BUILT_SOURCES}
+adts_la_CPPFLAGS = ${AM_CPPFLAGS} ${PYTHON_CPPFLAGS}
+adts_la_CFLAGS = ${AM_CFLAGS} -fno-strict-aliasing
+adts_la_LDFLAGS = ${PYTHON_LDFLAGS} -avoid-version -module
+
+nodist_adts_la_SOURCES = adts.c
+
+BUILT_SOURCES = lllsfd.c recvmmsg.c audio_parser.c
+EXTRA_DIST = lllsfd.pyx lllsfd.pxd recvmmsg.pyx recvmmsg.pxd audio_parser.pyx audio_parser.pxd mp3.pyx adts.pyx ${BUILT_SOURCES}
+
+MAINTAINERCLEANFILES = mp3.c adts.c ${BUILT_SOURCES}
 
 mp3.c: Makefile.in mp3.pyx
 	cython --verbose mp3.pyx
+
+adts.c: Makefile.in adts.pyx
+	cython --verbose adts.pyx
 
 # A kinda clever rule used to avoid writing each Cython compilation
 # rule by hand

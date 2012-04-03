@@ -3,6 +3,7 @@
 from savate.helpers import Buffer
 from savate.sources import LowBitrateSource
 from savate.mp3 import MP3Parser
+from savate.adts import ADTSParser
 
 
 class ShoutcastSource(LowBitrateSource):
@@ -82,3 +83,13 @@ class MP3ShoutcastSource(ShoutcastSource):
                                  request_parser, path, burst_size)
 
         self.frame_parser = MP3Parser()
+
+
+class ADTSShoutcastSource(ShoutcastSource):
+    """Shoutcast Source with ADTS frames parsing support."""
+    def __init__(self, server, sock, address, content_type, request_parser,
+                 path = None, burst_size = None):
+        ShoutcastSource.__init__(self, server, sock, address, content_type,
+                                 request_parser, path, burst_size)
+
+        self.frame_parser = ADTSParser()
