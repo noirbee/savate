@@ -114,7 +114,8 @@ class HTTPRequest(looping.BaseIOEventHandler):
         response = None
 
         if self.request_parser.request_method in [b'PUT', b'SOURCE', b'POST']:
-            self.server.add_source(path, self.sock, self.address, self.request_parser)
+            self.server.register_source(sources.find_source(
+                path, self.sock, self.address, self.request_parser))
         elif self.request_parser.request_method in [b'GET']:
             # New client
 
@@ -272,13 +273,14 @@ class TCPServer(looping.BaseIOEventHandler):
     def configure(self):
         self.config.configure()
 
-    def add_relay(self, url, path, address_info = None, burst_size = None):
+    def add_relay(self, url, path, address_info = None, burst_size = None,
+                  on_demand = False):
         if urlparse.urlparse(url).scheme in ('udp', 'multicast'):
             tmp_relay = relay.UDPRelay(self, url, path, address_info,
                                        burst_size)
         else:
             tmp_relay = relay.HTTPRelay(self, url, path, address_info,
-                                        burst_size)
+                                        burst_size, on_demand)
         self.relays[tmp_relay.sock] = tmp_relay
 
     def add_auth_handler(self, handler):
@@ -289,12 +291,14 @@ class TCPServer(looping.BaseIOEventHandler):
 
     def add_source(self, path, sock, address, request_parser,
                    burst_size = None):
-        # New source
-        self.logger.info('New source for %s: %s', path, address)
 
         source = sources.find_source(self, sock, address, request_parser, path,
                                      burst_size)
+        self.register_source(source)
 
+    def register_source(self, source):
+        self.logger.info('New source (%s) for %s: %s',
+                         source.__class__.__name__, source.path, source.address)
         self.sources.setdefault(path, {})[source] = {'source': source,
                                                      'clients': {}}
         self.reset_inactivity_timeout(source)
@@ -314,6 +318,8 @@ class TCPServer(looping.BaseIOEventHandler):
     def remove_source(self, source):
         # De-activate the timeout handling for this source
         self.remove_inactivity_timeout(source)
+        # Remove on demand closing timeout
+        self.timeouts.remove_timeout(source)
         # FIXME: client shutdown
         if len(self.sources[source.path]) > 1:
             # There is at least one other source for this path,
@@ -324,6 +330,8 @@ class TCPServer(looping.BaseIOEventHandler):
                                                      itertools.cycle(self.sources[source.path].keys())):
                 client.source = new_source
                 self.sources[source.path][new_source]['clients'][client.fileno()] = client
+                # if source is on demand and not running, then start it
+                new_source.on_demand_activate()
         else:
             for client in self.sources[source.path][source]['clients'].values():
                 client.close()
@@ -363,7 +371,8 @@ class TCPServer(looping.BaseIOEventHandler):
                 self.logger.info('Restarting relay %s', self.relays_to_restart[0][1])
                 tmp_relay = self.relays_to_restart.popleft()[1]
                 self.add_relay(tmp_relay.url, tmp_relay.path,
-                               tmp_relay.addr_info, tmp_relay.burst_size)
+                               tmp_relay.addr_info, tmp_relay.burst_size,
+                               tmp_relay.on_demand)
 
             if self.reloading:
                 self.reloading = False

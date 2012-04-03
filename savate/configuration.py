@@ -116,6 +116,7 @@ class ServerConfiguration(object):
         conf = self.config_dict
         server = self.server
         global_burst_size = conf.get('burst_size', None)
+        global_on_demand = conf.get('on_demand', False)
 
         net_resolve_all = conf.get('net_resolve_all', False)
 
@@ -135,6 +136,7 @@ class ServerConfiguration(object):
 
             mount_burst_size = convert_burst_size(
                 mount_conf.get('burst_size', global_burst_size))
+            mount_on_demand = mount_conf.get('on_demand', global_on_demand)
             path = mount_conf['path']
             for source_url in mount_conf['source_urls']:
                 parsed_url = urlparse.urlparse(source_url)
@@ -156,12 +158,14 @@ class ServerConfiguration(object):
                                 server.logger.info('Trying to relay %s from %s:%s', source_url,
                                             address_info[4][0], address_info[4][1])
                                 server.add_relay(source_url, path, address_info,
-                                                 mount_burst_size)
+                                                 mount_burst_size,
+                                                 mount_on_demand)
                     else:
                         if (source_url, path) not in relay_index:
                             server.logger.info('Trying to relay %s', source_url)
                             server.add_relay(source_url, path,
-                                             burst_size=mount_burst_size)
+                                             burst_size=mount_burst_size,
+                                             on_demand=mount_on_demand)
 
     def configure_authorization(self):
         conf = self.config_dict

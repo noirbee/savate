@@ -8,9 +8,13 @@ class StreamSource(looping.BaseIOEventHandler):
 
     # Incoming maximum buffer size
     RECV_BUFFER_SIZE = 64 * 2**10
+    # Stay connected for 20 seconds to the source when all clients are
+    # disconnected
+    ON_DEMAND_TIMEOUT = 20
 
     def __init__(self, server, sock, address, content_type,
-                 request_parser = None, path = None, burst_size = None):
+                 request_parser = None, path = None, burst_size = None,
+                 on_demand=False):
         self.server = server
         self.sock = sock
         self.address = address
@@ -18,6 +22,51 @@ class StreamSource(looping.BaseIOEventHandler):
         self.request_parser = request_parser
         self.path = path or self.request_parser.request_path
         self.burst_size = burst_size
+
+        # states
+        # 0: no on demand
+        # 1: on demand not running
+        # 2: on demand connecting
+        # 3: on demand running
+        # 4: on demand running but about to close
+        self.on_demand = 3 if on_demand else 0
+        self.relay = server.relays[sock]
+
+    def on_demand_activate(self):
+        """Method which reconnects the relay"""
+        # activate only if state 1
+        if self.on_demand == 4:
+            # cancel on-demand closing
+            self.server.timeouts.remove_timeout(self)
+            return
+        elif self.on_demand != 1:
+            return
+
+        self.server.logger.info('Activate ondemand for source %s: %s',
+                                self.path, self.address)
+        self.on_demand = 2
+        del self.server.relays[self.sock]
+        self.relay.connect()
+        self.server.relays[self.relay.sock] = self.relay
+
+    def on_demand_desactivate(self):
+        """Cleanup when on_demand is desactivated. It can be overided in
+        subclasses to clear buffers for examples.
+
+        """
+        self.server.logger.info('Desactivate ondemand for source %s: %s',
+                                self.path, self.address)
+        self.on_demand = 1
+        self.server.loop.unregister(self)
+        self.server.remove_inactivity_timeout(self)
+        self.sock.close()
+
+    def on_demand_connected(self, sock, request_parser):
+        """Method called by the relay when it did reconnect sucessfully."""
+        self.on_demand = 3
+        self.sock = sock
+        self.request_parser = request_parser
+        self.server.loop.register(self, looping.POLLIN)
 
     def __str__(self):
         return '<%s for %s, %s, %s>' % (
@@ -29,6 +78,7 @@ class StreamSource(looping.BaseIOEventHandler):
 
     def close(self):
         self.server.remove_source(self)
+        self.relay = None  # prevent cyclic reference
         looping.BaseIOEventHandler.close(self)
 
     def recv_packet(self, buffer_size = RECV_BUFFER_SIZE):
@@ -62,11 +112,25 @@ class StreamSource(looping.BaseIOEventHandler):
         self.publish_packet(packet)
 
     def publish_packet(self, packet):
+        clients = self.server.sources[self.path][self]['clients']
+
+        if not clients and self.on_demand == 3:
+            # activate timeout for desactivating source
+            self.on_demand = 4
+            self.server.timeouts.reset_timeout(
+                self,
+                self.server.loop.now() + self.ON_DEMAND_TIMEOUT,
+                self.on_demand_desactivate,
+            )
+
         self.server.publish_packet(self, packet)
 
     def new_client(self, client):
-        # Do nothing by default
-        pass
+        if self.on_demand == 1:
+            self.on_demand_activate()
+        elif self.on_demand == 4:
+            self.on_demand = 3
+            self.server.timeouts.remove_timeout(self)
 
     def update_burst_size(self, new_burst_size):
         pass
@@ -81,9 +145,10 @@ class BufferedRawSource(StreamSource):
     BURST_SIZE = 64 * 2**10
 
     def __init__(self, server, sock, address, content_type,
-                 request_parser = None , path = None, burst_size = None):
+                 request_parser = None , path = None, burst_size = None,
+                 on_demand=False):
         StreamSource.__init__(self, server, sock, address, content_type,
-                              request_parser, path, burst_size)
+                              request_parser, path, burst_size, on_demand)
         if request_parser:
             self.output_buffer_data = request_parser.body
         else:
@@ -99,7 +164,17 @@ class BufferedRawSource(StreamSource):
             self.burst_packets.append(self.output_buffer_data)
             self.output_buffer_data = ''
 
+    def on_demand_desactivate(self):
+        self.output_buffer_data = b''
+        self.burst_packets.clear()
+        StreamSource.on_demand_desactivate(self)
+
+    def on_demand_connected(self, sock, request_parser):
+        StreamSource.on_demand_connected(self, sock, request_parser)
+        self.output_buffer_data = request_parser.body
+
     def new_client(self, client):
+        StreamSource.new_client(self, client)
         for packet in self.burst_packets:
             client.add_packet(packet)
 
@@ -207,7 +282,7 @@ sources_mapping = {
 
 
 def find_source(server, sock, address, request_parser,
-                path = None, burst_size = None):
+                path = None, burst_size = None, on_demand = False):
     """Return a :class:`StreamSource` instance."""
 
     content_type = request_parser.headers.get('Content-Type',
@@ -222,4 +297,4 @@ def find_source(server, sock, address, request_parser,
         stream_source = BufferedRawSource
 
     return stream_source(server, sock, address, content_type, request_parser,
-                         path, burst_size)
+                         path, burst_size, on_demand)

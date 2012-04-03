@@ -11,9 +11,9 @@ class FLVSource(StreamSource):
     BURST_DURATION = 5 * 1000
 
     def __init__(self, sock, server, address, content_type, request_parser,
-                 path = None, burst_size = None):
+                 path = None, burst_size = None, on_demand=False):
         StreamSource.__init__(self, sock, server, address, content_type,
-                              request_parser, path, burst_size)
+                              request_parser, path, burst_size, on_demand)
         # Initial buffer data
         self.buffer_data = request_parser.body
         # The FLV stream header
@@ -32,7 +32,23 @@ class FLVSource(StreamSource):
         # At startup we want to parse the stream header
         self.handle_data = self.handle_header
 
+    def on_demand_desactivate(self):
+        StreamSource.on_demand_desactivate(self)
+        self.stream_header = None
+        self.got_initial_meta = self.got_initial_audio = self.got_initial_video = False
+        self.initial_tags.clear()
+        self.packets_group.clear()
+        self.burst_groups.clear()
+        self.burst_groups_data.clear()
+        self.handle_data = self.handle_header
+        self.buffer_data = b''
+
+    def on_demand_connected(self, sock, request_parser):
+        self.buffer_data = request_parser.body
+        StreamSource.on_demand_connected(self, sock, request_parser)
+
     def new_client(self, client):
+        StreamSource.new_client(self, client)
         if self.stream_header:
             client.add_packet(self.stream_header.raw_data)
         for tag in self.initial_tags:

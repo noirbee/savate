@@ -12,10 +12,16 @@ class ShoutcastSource(LowBitrateSource):
                    'notice2')
 
     def __init__(self, server, sock, address, content_type,
-                 request_parser, path = None, burst_size = None):
+                 request_parser, path = None, burst_size = None,
+                 on_demand=False):
         LowBitrateSource.__init__(self, server, sock, address, content_type,
-                                   request_parser, path, burst_size)
+                                   request_parser, path, burst_size, on_demand)
 
+        self.set_headers()
+
+        self.frame_parser = None
+
+    def set_headers(self):
         # set icy metadata
         for head in self.ICY_HEADERS:
             setattr(self, 'icy_%s' % head,
@@ -28,7 +34,15 @@ class ShoutcastSource(LowBitrateSource):
             self.buffer_metadata = b''
             self.metadata = b''
 
-        self.frame_parser = None
+    def on_demand_desactivate(self):
+        LowBitrateSource.on_demand_desactivate(self)
+        if self.frame_parser is not None:
+            self.frame_parser.clear()
+
+    def on_demand_connected(self, sock, request_parser):
+        # update? headers
+        LowBitrateSource.on_demand_connected(self, sock, request_parser)
+        self.set_headers()
 
     def metadata_parse(self):
         packet_cuts = []
@@ -78,9 +92,9 @@ class ShoutcastSource(LowBitrateSource):
 class MP3ShoutcastSource(ShoutcastSource):
     """Shoutcast Source with MP3 frames parsing support."""
     def __init__(self, server, sock, address, content_type, request_parser,
-                 path = None, burst_size = None):
+                 path = None, burst_size = None, on_demand=False):
         ShoutcastSource.__init__(self, server, sock, address, content_type,
-                                 request_parser, path, burst_size)
+                                 request_parser, path, burst_size, on_demand)
 
         self.frame_parser = MP3Parser()
 
@@ -88,8 +102,8 @@ class MP3ShoutcastSource(ShoutcastSource):
 class ADTSShoutcastSource(ShoutcastSource):
     """Shoutcast Source with ADTS frames parsing support."""
     def __init__(self, server, sock, address, content_type, request_parser,
-                 path = None, burst_size = None):
+                 path = None, burst_size = None, on_demand=False):
         ShoutcastSource.__init__(self, server, sock, address, content_type,
-                                 request_parser, path, burst_size)
+                                 request_parser, path, burst_size, on_demand)
 
         self.frame_parser = ADTSParser()

@@ -94,9 +94,16 @@ class HTTPRelay(Relay):
     HTTP_VERSION = b'HTTP/1.1'
     RESPONSE_MAX_SIZE = 4096
 
-    def __init__(self, server, url, path, addr_info = None, burst_size = None):
+    def __init__(self, server, url, path, addr_info = None, burst_size = None,
+                 on_demand=False):
         Relay.__init__(self, server, url, path, addr_info, burst_size)
 
+        self.on_demand = bool(on_demand)
+        self.od_source = None
+
+        self.connect()
+
+    def connect(self):
         self.create_socket()
         self.register()
 
@@ -199,5 +206,19 @@ class HTTPRelay(Relay):
             self.close()
             return
 
-        self.server.add_source(self.path, self.sock, self.address,
-                               self.response_parser, self.burst_size)
+        if self.on_demand and self.od_source:
+            # give back the control to the source
+            self.od_source.on_demand_connected(self.sock, self.response_parser)
+            return
+
+        source = sources.find_source(
+            self.server, self.sock, self.address, self.response_parser,
+            self.path, self.burst_size, self.on_demand)
+        if self.on_demand:
+            self.od_source = source
+        self.server.register_source(source)
+
+    def close(self):
+        Relay.close(self)
+        if self.od_source is not None:
+            self.od_source.close()
