@@ -26,6 +26,8 @@ class ShoutcastSource(LowBitrateSource):
             self.buffer_metadata = b''
             self.metadata = b''
 
+        self.frame_parser = None
+
     def metadata_parse(self):
         packet_cuts = []
         packet = Buffer(self.output_buffer_data )
@@ -57,7 +59,15 @@ class ShoutcastSource(LowBitrateSource):
         if self.icy_metaint:
             self.metadata_parse()
 
-        if self.output_buffer_data:
-            self.publish_packet(self.output_buffer_data)
-            self.burst_packets.append(self.output_buffer_data)
-            self.output_buffer_data = b''
+        if not self.output_buffer_data:
+            return
+
+        if self.frame_parser is not None:
+            packet = self.frame_parser.feed(self.output_buffer_data)
+        else:
+            packet = self.output_buffer_data
+        self.output_buffer_data= b''
+
+        if packet:
+            self.publish_packet(packet)
+            self.burst_packets.append(packet)
