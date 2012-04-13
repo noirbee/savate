@@ -32,8 +32,8 @@ class FLVSource(StreamSource):
         # At startup we want to parse the stream header
         self.handle_data = self.handle_header
 
-    def on_demand_desactivate(self):
-        StreamSource.on_demand_desactivate(self)
+    def on_demand_deactivate(self):
+        StreamSource.on_demand_deactivate(self)
         self.stream_header = None
         self.got_initial_meta = self.got_initial_audio = self.got_initial_video = False
         self.initial_tags.clear()

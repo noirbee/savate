@@ -49,8 +49,8 @@ class StreamSource(looping.BaseIOEventHandler):
         self.relay.connect()
         self.server.relays[self.relay.sock] = self.relay
 
-    def on_demand_desactivate(self):
-        """Cleanup when on_demand is desactivated. It can be overided in
+    def on_demand_deactivate(self):
+        """Cleanup when on_demand is deactivated. It can be overided in
         subclasses to clear buffers for examples.
 
         """
@@ -120,7 +120,7 @@ class StreamSource(looping.BaseIOEventHandler):
             self.server.timeouts.reset_timeout(
                 self,
                 self.server.loop.now() + self.ON_DEMAND_TIMEOUT,
-                self.on_demand_desactivate,
+                self.on_demand_deactivate,
             )
 
         self.server.publish_packet(self, packet)
@@ -164,10 +164,10 @@ class BufferedRawSource(StreamSource):
             self.burst_packets.append(self.output_buffer_data)
             self.output_buffer_data = ''
 
-    def on_demand_desactivate(self):
+    def on_demand_deactivate(self):
         self.output_buffer_data = b''
         self.burst_packets.clear()
-        StreamSource.on_demand_desactivate(self)
+        StreamSource.on_demand_deactivate(self)
 
     def on_demand_connected(self, sock, request_parser):
         StreamSource.on_demand_connected(self, sock, request_parser)

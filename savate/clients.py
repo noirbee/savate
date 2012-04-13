@@ -42,7 +42,7 @@ class StreamClient(HTTPEventHandler):
         if self.output_buffer.ready:
             # De-activate handler to avoid unnecessary notifications
             self.server.loop.register(self, 0)
-            # desactivate timer if output_buffer is empty
+            # deactivate timer if output_buffer is empty
             self.server.remove_inactivity_timeout(self)
             self.timeout_state = False
 

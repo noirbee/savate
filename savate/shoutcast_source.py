@@ -34,8 +34,8 @@ class ShoutcastSource(LowBitrateSource):
             self.buffer_metadata = b''
             self.metadata = b''
 
-    def on_demand_desactivate(self):
-        LowBitrateSource.on_demand_desactivate(self)
+    def on_demand_deactivate(self):
+        LowBitrateSource.on_demand_deactivate(self)
         if self.frame_parser is not None:
             self.frame_parser.clear()
 
