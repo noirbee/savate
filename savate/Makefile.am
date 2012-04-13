@@ -51,7 +51,7 @@ mp3_la_CPPFLAGS = ${AM_CPPFLAGS} ${PYTHON_CPPFLAGS}
 mp3_la_CFLAGS = ${AM_CFLAGS} -fno-strict-aliasing
 mp3_la_LDFLAGS = ${PYTHON_LDFLAGS} -avoid-version -module
 
-nodist_mp3_la_SOURCES = mp3.c mp3_static.c
+mp3_la_SOURCES = mp3.c mp3_static.c mp3_static.h
 
 pkgpyexec_LTLIBRARIES += adts.la
 
@@ -59,7 +59,7 @@ adts_la_CPPFLAGS = ${AM_CPPFLAGS} ${PYTHON_CPPFLAGS}
 adts_la_CFLAGS = ${AM_CFLAGS} -fno-strict-aliasing
 adts_la_LDFLAGS = ${PYTHON_LDFLAGS} -avoid-version -module
 
-nodist_adts_la_SOURCES = adts.c
+adts_la_SOURCES = adts.c
 
 BUILT_SOURCES = lllsfd.c recvmmsg.c audio_parser.c
 EXTRA_DIST = lllsfd.pyx lllsfd.pxd recvmmsg.pyx recvmmsg.pxd audio_parser.pyx audio_parser.pxd mp3.pyx adts.pyx ${BUILT_SOURCES}
