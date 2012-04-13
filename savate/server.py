@@ -297,8 +297,8 @@ class TCPServer(looping.BaseIOEventHandler):
     def register_source(self, source):
         self.logger.info('New source (%s) for %s: %s',
                          source.__class__.__name__, source.path, source.address)
-        self.sources.setdefault(path, {})[source] = {'source': source,
-                                                     'clients': {}}
+        self.sources.setdefault(source.path, {})[source] = {'source': source,
+                                                            'clients': {}}
         self.reset_inactivity_timeout(source)
         self.loop.register(source, looping.POLLIN)
 
