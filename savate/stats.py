@@ -17,7 +17,7 @@ class ApacheLogger(object):
                            status_code=200):
         self.server.logger.info(
             '%s - %s [%s] "%s %s %s" %d %s "%s" "%s"',
-            address,
+            address[0],
             '-',  # FIXME: replace by the username
             datetime.fromtimestamp(
                 self.server.loop.now(),
@@ -26,7 +26,7 @@ class ApacheLogger(object):
             request_parser.request_path,
             request_parser.http_version,
             status_code,
-            '-',  # FIXME: replace by the size of the request
+            size if size > 0 else '-',
             request_parser.headers.get('Referer', '-'),
             request_parser.headers.get('User-Agent', '-'),
         )
