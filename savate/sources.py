@@ -240,10 +240,11 @@ try:
         RECV_BUFFER_COUNT_MAX = 512
 
         def __init__(self, server, sock, address, content_type,
-                     request_parser = None, path = None, burst_size = None):
+                     request_parser = None, path = None, burst_size = None,
+                     on_demand = False):
             super(MPEGTSSource, self).__init__(server, sock, address,
                                                content_type, request_parser,
-                                               path, burst_size)
+                                               path, burst_size, on_demand)
             self.recv_buffer_count = self.RECV_BUFFER_COUNT_MIN
 
         def recv_packet(self, _buffer_size = None):
