@@ -39,6 +39,7 @@ class StreamSource(looping.BaseIOEventHandler):
         if self.on_demand == self.CLOSING:
             # cancel on-demand closing
             self.server.timeouts.remove_timeout(self)
+            self.on_demand = self.RUNNING
             return
         elif self.on_demand != self.STOPPED:
             return
