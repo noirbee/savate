@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+from savate.looping import POLLOUT
 from savate.helpers import HTTPEventHandler, HTTPResponse, Buffer
 from savate.sources import ShoutcastSource
 
@@ -27,6 +28,8 @@ class StreamClient(HTTPEventHandler):
 
     def add_packet(self, packet):
         self.output_buffer.add_buffer(packet)
+        self.activate_timeout()
+        self.server.loop.register(self, POLLOUT)
 
     def close(self):
         self.server.remove_client(self)
