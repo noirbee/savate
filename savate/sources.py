@@ -12,6 +12,13 @@ class StreamSource(looping.BaseIOEventHandler):
     # disconnected
     ON_DEMAND_TIMEOUT = 20
 
+    # ondemand states
+    DISABLED = 0
+    STOPPED = 1
+    CONNECTING = 2
+    RUNNING = 3
+    CLOSING = 4  # running but about to close
+
     def __init__(self, server, sock, address, content_type,
                  request_parser = None, path = None, burst_size = None,
                  on_demand=False):
@@ -23,28 +30,22 @@ class StreamSource(looping.BaseIOEventHandler):
         self.path = path or self.request_parser.request_path
         self.burst_size = burst_size
 
-        # states
-        # 0: no on demand
-        # 1: on demand not running
-        # 2: on demand connecting
-        # 3: on demand running
-        # 4: on demand running but about to close
-        self.on_demand = 3 if on_demand else 0
+        self.on_demand = self.RUNNING if on_demand else self.DISABLED
         self.relay = server.relays[sock]
 
     def on_demand_activate(self):
         """Method which reconnects the relay"""
         # activate only if state 1
-        if self.on_demand == 4:
+        if self.on_demand == self.CLOSING:
             # cancel on-demand closing
             self.server.timeouts.remove_timeout(self)
             return
-        elif self.on_demand != 1:
+        elif self.on_demand != self.STOPPED:
             return
 
         self.server.logger.info('Activate ondemand for source %s: %s',
                                 self.path, self.address)
-        self.on_demand = 2
+        self.on_demand = self.CONNECTING
         del self.server.relays[self.sock]
         self.relay.connect()
         self.server.relays[self.relay.sock] = self.relay
@@ -56,14 +57,14 @@ class StreamSource(looping.BaseIOEventHandler):
         """
         self.server.logger.info('Desactivate ondemand for source %s: %s',
                                 self.path, self.address)
-        self.on_demand = 1
+        self.on_demand = self.STOPPED
         self.server.loop.unregister(self)
         self.server.remove_inactivity_timeout(self)
         self.sock.close()
 
     def on_demand_connected(self, sock, request_parser):
         """Method called by the relay when it did reconnect sucessfully."""
-        self.on_demand = 3
+        self.on_demand = self.RUNNING
         self.sock = sock
         self.request_parser = request_parser
         self.server.loop.register(self, looping.POLLIN)
@@ -114,9 +115,9 @@ class StreamSource(looping.BaseIOEventHandler):
     def publish_packet(self, packet):
         clients = self.server.sources[self.path][self]['clients']
 
-        if not clients and self.on_demand == 3:
+        if not clients and self.on_demand == self.RUNNING:
             # activate timeout for desactivating source
-            self.on_demand = 4
+            self.on_demand = self.CLOSING
             self.server.timeouts.reset_timeout(
                 self,
                 self.server.loop.now() + self.ON_DEMAND_TIMEOUT,
@@ -126,10 +127,10 @@ class StreamSource(looping.BaseIOEventHandler):
         self.server.publish_packet(self, packet)
 
     def new_client(self, client):
-        if self.on_demand == 1:
+        if self.on_demand == self.STOPPED:
             self.on_demand_activate()
-        elif self.on_demand == 4:
-            self.on_demand = 3
+        elif self.on_demand == self.CLOSING:
+            self.on_demand = self.RUNNING
             self.server.timeouts.remove_timeout(self)
 
     def update_burst_size(self, new_burst_size):
