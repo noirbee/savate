@@ -386,9 +386,6 @@ class TCPServer(looping.BaseIOEventHandler):
         self.check_for_relay_restart(source)
 
     def remove_client(self, client):
-        # De-activate the timeout handling for this client
-        self.remove_inactivity_timeout(client)
-
         self.clients_connected -= 1
         source = client.source
         self.loop.unregister(client)
