@@ -36,7 +36,8 @@ class JSONStatusClient(BaseStatusClient):
         for path, sources in self.server.sources.items():
             sources_dict[path] = {}
             for source, source_dict in sources.items():
-                source_address = '%s:%s' % source.address
+                source_address = '%s:%s (%s)' % (source.address[0],
+                                                 source.address[1], id(source))
                 sources_dict[path][source_address] = {}
                 for fd, client in source_dict['clients'].items():
                     sources_dict[path][source_address][fd] = '%s:%s' % client.address
