@@ -32,7 +32,7 @@ class StreamSource(looping.BaseIOEventHandler):
         self.keepalive = keepalive
 
         self.on_demand = self.RUNNING if on_demand else self.DISABLED
-        self.relay = server.relays[sock]
+        self.relay = server.relays.get(sock)  # some sources doesn't have relay
 
     def on_demand_activate(self):
         """Method which reconnects the relay"""

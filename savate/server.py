@@ -117,7 +117,7 @@ class HTTPRequest(looping.BaseIOEventHandler):
 
         if self.request_parser.request_method in [b'PUT', b'SOURCE', b'POST']:
             self.server.register_source(sources.find_source(
-                path, self.sock, self.address, self.request_parser))
+                self.server, self.sock, self.address, self.request_parser, path))
         elif self.request_parser.request_method in [b'GET']:
             # New client
 
