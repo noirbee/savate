@@ -187,6 +187,7 @@ class TCPServer(looping.BaseIOEventHandler):
         with open(self.config_file) as conf_file:
             self.config = configuration.ServerConfiguration(self, json.load(conf_file))
         self.logger = logger or logging.getLogger('savate')
+        self.keepalived = collections.defaultdict(list)
         self.sources = {}
         self.relays = {}
         self.relays_to_restart = collections.deque()
@@ -302,6 +303,16 @@ class TCPServer(looping.BaseIOEventHandler):
         self.reset_inactivity_timeout(source)
         self.loop.register(source, looping.POLLIN)
 
+        # check if there are listeners waiting
+        if self.keepalived[source.path]:
+            # cancel timeout
+            self.timeouts.remove_timeout(source.path)
+            for client in self.keepalived[source.path]:
+                client.source = source
+                self.sources[source.path][source]['clients'][client.fileno()] = client
+
+            del self.keepalived[source.path]
+
     def update_activity(self, handler):
         self.reset_inactivity_timeout(handler)
 
@@ -313,7 +324,7 @@ class TCPServer(looping.BaseIOEventHandler):
             self.relays_to_restart.append((self.loop.now() + self.RESTART_DELAY,
                                            self.relays.pop(handler.sock)))
 
-    def remove_source(self, source):
+    def remove_source(self, source, keepalive=True):
         # De-activate the timeout handling for this source
         self.remove_inactivity_timeout(source)
         # Remove on demand closing timeout
@@ -332,7 +343,32 @@ class TCPServer(looping.BaseIOEventHandler):
                 new_source.on_demand_activate()
         else:
             for client in self.sources[source.path][source]['clients'].values():
-                client.close()
+                if keepalive:
+                    # try to keep the clients
+                    client.source = None
+                    # we don't clear client buffer because player can't
+                    # resynchronise on the stream, this result in a mix of old
+                    # frames and new ones when the source reconnects which can
+                    # be weird
+                    self.keepalived[source.path].append(client)
+                else:
+                    client.close()
+            if keepalive:
+                # timeout 20 seconds
+                def my_closure():
+                    # close clients
+                    self.logger.error('Keepalive client trashed')
+                    for client in self.keepalived[source.path]:
+                        # in case client was disconnected already
+                        if not client.closed:
+                            client.close()
+                    del self.keepalived[source.path]
+
+                self.timeouts.reset_timeout(
+                    source.path,
+                    self.loop.now() + 20,
+                    my_closure,
+                )
             del self.sources[source.path]
         self.loop.unregister(source)
         self.check_for_relay_restart(source)
@@ -342,11 +378,17 @@ class TCPServer(looping.BaseIOEventHandler):
         self.io_timeouts.remove_timeout(client)
 
         source = client.source
-        # FIXME: what to do with this one ?
-        self.logger.info('Dropping client for path %s, %s', source.path,
-                         client.address)
         self.loop.unregister(client)
+        if source is None:
+            return
+
         del self.sources[source.path][source]['clients'][client.fileno()]
+        # FIXME: what to do with this one ?
+        self.logger.info(
+            'Dropping client for path %s, %s',
+            source.path,
+            client.address,
+        )
 
     def all_clients(self):
         return itertools.chain.from_iterable(source_dict['clients'].itervalues()

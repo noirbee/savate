@@ -21,6 +21,10 @@ class StreamClient(HTTPEventHandler):
         self.timeout_state = False
         self.server.remove_inactivity_timeout(self)
 
+    @property
+    def closed(self):
+        return self.sock is None
+
     def activate_timeout(self):
         if not self.timeout_state:
             self.timeout_state = True
