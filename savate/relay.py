@@ -24,6 +24,7 @@ class Relay(looping.BaseIOEventHandler):
         self.path = path
         self.addr_info = addr_info
         self.burst_size = burst_size
+        self.keepalive = False
 
     def close(self):
         self.server.remove_inactivity_timeout(self)
@@ -95,11 +96,17 @@ class HTTPRelay(Relay):
     RESPONSE_MAX_SIZE = 4096
 
     def __init__(self, server, url, path, addr_info = None, burst_size = None,
-                 on_demand=False):
+                 on_demand = False, keepalive = None):
         Relay.__init__(self, server, url, path, addr_info, burst_size)
 
         self.on_demand = bool(on_demand)
         self.od_source = None
+
+        # when a source disconnects, its clients can be kept while we try to
+        # reconnect to it, this "keepalive" must be an integer in seconds or
+        # None, note that it has nothing to do with HTTP keepalive, the name is
+        # just here to confuse people
+        self.keepalive = keepalive
 
         self.connect()
 
@@ -213,7 +220,7 @@ class HTTPRelay(Relay):
 
         source = sources.find_source(
             self.server, self.sock, self.address, self.response_parser,
-            self.path, self.burst_size, self.on_demand)
+            self.path, self.burst_size, self.on_demand, self.keepalive)
         if self.on_demand:
             self.od_source = source
         self.server.register_source(source)

@@ -11,9 +11,11 @@ class FLVSource(StreamSource):
     BURST_DURATION = 5 * 1000
 
     def __init__(self, sock, server, address, content_type, request_parser,
-                 path = None, burst_size = None, on_demand=False):
+                 path = None, burst_size = None, on_demand = False,
+                 keepalive = False):
         StreamSource.__init__(self, sock, server, address, content_type,
-                              request_parser, path, burst_size, on_demand)
+                              request_parser, path, burst_size, on_demand,
+                              keepalive)
         # Initial buffer data
         self.buffer_data = request_parser.body
         # The FLV stream header

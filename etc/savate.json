@@ -6,6 +6,7 @@
     "net_resolve_all": false,
     "burst_size": "64k",
     "on_demand": false,
+    "keepalive": 20,
     "mounts": [
         {
             "net_resolve_all": true,

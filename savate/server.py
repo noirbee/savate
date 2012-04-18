@@ -270,13 +270,13 @@ class TCPServer(looping.BaseIOEventHandler):
                              status_code)
 
     def add_relay(self, url, path, address_info = None, burst_size = None,
-                  on_demand = False):
+                  on_demand = False, keepalive = False):
         if urlparse.urlparse(url).scheme in ('udp', 'multicast'):
             tmp_relay = relay.UDPRelay(self, url, path, address_info,
                                        burst_size)
         else:
             tmp_relay = relay.HTTPRelay(self, url, path, address_info,
-                                        burst_size, on_demand)
+                                        burst_size, on_demand, keepalive)
         self.relays[tmp_relay.sock] = tmp_relay
 
     def add_auth_handler(self, handler):
@@ -324,11 +324,14 @@ class TCPServer(looping.BaseIOEventHandler):
             self.relays_to_restart.append((self.loop.now() + self.RESTART_DELAY,
                                            self.relays.pop(handler.sock)))
 
-    def remove_source(self, source, keepalive=True):
+    def remove_source(self, source):
         # De-activate the timeout handling for this source
         self.remove_inactivity_timeout(source)
         # Remove on demand closing timeout
         self.timeouts.remove_timeout(source)
+
+        keepalive = source.keepalive
+
         # FIXME: client shutdown
         if len(self.sources[source.path]) > 1:
             # There is at least one other source for this path,
@@ -354,7 +357,7 @@ class TCPServer(looping.BaseIOEventHandler):
                 else:
                     client.close()
             if keepalive:
-                # timeout 20 seconds
+                # timeout n seconds
                 def my_closure():
                     # close clients
                     self.logger.error('Keepalive client trashed')
@@ -366,7 +369,7 @@ class TCPServer(looping.BaseIOEventHandler):
 
                 self.timeouts.reset_timeout(
                     source.path,
-                    self.loop.now() + 20,
+                    self.loop.now() + keepalive,
                     my_closure,
                 )
             del self.sources[source.path]
@@ -375,7 +378,7 @@ class TCPServer(looping.BaseIOEventHandler):
 
     def remove_client(self, client):
         # De-activate the timeout handling for this client
-        self.io_timeouts.remove_timeout(client)
+        self.remove_inactivity_timeout(client)
 
         source = client.source
         self.loop.unregister(client)
@@ -411,7 +414,7 @@ class TCPServer(looping.BaseIOEventHandler):
                 tmp_relay = self.relays_to_restart.popleft()[1]
                 self.add_relay(tmp_relay.url, tmp_relay.path,
                                tmp_relay.addr_info, tmp_relay.burst_size,
-                               tmp_relay.on_demand)
+                               tmp_relay.on_demand, tmp_relay.keepalive)
 
             if self.reloading:
                 self.reloading = False

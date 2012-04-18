@@ -73,12 +73,19 @@ class ServerConfiguration(object):
         self.server.relays = {}
 
         # use a dict to index all relays configurations
-        # values are burstsizes or None
+        # values are tuples ( burstsizes or None, keepalive or None)
         # if a relay is represented in the index, it means it exists
         relay_index = dict((
             (url, mount['path']),
-            convert_burst_size(mount.get('burst_size',
-                                         self.config_dict.get('burst_size'))),
+            (
+                convert_burst_size(
+                    mount.get(
+                        'burst_size',
+                        self.config_dict.get('burst_size'),
+                    ),
+                ),
+                mount.get('keepalive', self.config_dict.get('keepalive')),
+            ),
         ) for mount in self.config_dict.get(
             'mounts', []) for url in mount.get('source_urls', []))
         # source index same as relays but with source instances as values
@@ -88,15 +95,22 @@ class ServerConfiguration(object):
         ) for sources in self.server.sources.itervalues() for source in sources)
 
         for relay in tmp_relays.values():
-            burst_size = relay_index.get((relay.url, relay.path), False)
-            if burst_size != False:
+            relay_params = relay_index.get((relay.url, relay.path), None)
+            if relay_params is not None:
                 # update relay burst size
-                relay.burst_size = burst_size
+                relay.burst_size = relay_params[0]
+
+                # update keepalive info
+                try:
+                    relay.keepalive = int(relay_params[1])
+                except (ValueError, TypeError):
+                    relay.keepalive = None
 
                 # update sources burst size
                 source = source_index.get(relay.sock)
                 if source is not None:
                     source.update_burst_size(relay.burst_size)
+                    source.keepalive = relay.keepalive
 
                 self.server.relays[relay.sock] = relay
             else:
@@ -126,6 +140,7 @@ class ServerConfiguration(object):
         server = self.server
         global_burst_size = conf.get('burst_size', None)
         global_on_demand = conf.get('on_demand', False)
+        global_keepalive = conf.get('keepalive', False)
 
         net_resolve_all = conf.get('net_resolve_all', False)
 
@@ -146,6 +161,7 @@ class ServerConfiguration(object):
             mount_burst_size = convert_burst_size(
                 mount_conf.get('burst_size', global_burst_size))
             mount_on_demand = mount_conf.get('on_demand', global_on_demand)
+            mount_keep_alive = mount_conf.get('keepalive', global_keepalive)
             path = mount_conf['path']
             for source_url in mount_conf['source_urls']:
                 parsed_url = urlparse.urlparse(source_url)
@@ -168,13 +184,15 @@ class ServerConfiguration(object):
                                             address_info[4][0], address_info[4][1])
                                 server.add_relay(source_url, path, address_info,
                                                  mount_burst_size,
-                                                 mount_on_demand)
+                                                 mount_on_demand,
+                                                 mount_keep_alive)
                     else:
                         if (source_url, path) not in relay_index:
                             server.logger.info('Trying to relay %s', source_url)
                             server.add_relay(source_url, path,
                                              burst_size=mount_burst_size,
-                                             on_demand=mount_on_demand)
+                                             on_demand=mount_on_demand,
+                                             keepalive=mount_keep_alive)
 
     def configure_authorization(self):
         conf = self.config_dict

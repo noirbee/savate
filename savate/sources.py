@@ -21,7 +21,7 @@ class StreamSource(looping.BaseIOEventHandler):
 
     def __init__(self, server, sock, address, content_type,
                  request_parser = None, path = None, burst_size = None,
-                 on_demand=False):
+                 on_demand = False, keepalive = None):
         self.server = server
         self.sock = sock
         self.address = address
@@ -29,6 +29,7 @@ class StreamSource(looping.BaseIOEventHandler):
         self.request_parser = request_parser
         self.path = path or self.request_parser.request_path
         self.burst_size = burst_size
+        self.keepalive = keepalive
 
         self.on_demand = self.RUNNING if on_demand else self.DISABLED
         self.relay = server.relays[sock]
@@ -148,9 +149,10 @@ class BufferedRawSource(StreamSource):
 
     def __init__(self, server, sock, address, content_type,
                  request_parser = None , path = None, burst_size = None,
-                 on_demand=False):
+                 on_demand = False, keepalive = None):
         StreamSource.__init__(self, server, sock, address, content_type,
-                              request_parser, path, burst_size, on_demand)
+                              request_parser, path, burst_size, on_demand,
+                              keepalive)
         if request_parser:
             self.output_buffer_data = request_parser.body
         else:
@@ -285,7 +287,8 @@ sources_mapping = {
 
 
 def find_source(server, sock, address, request_parser,
-                path = None, burst_size = None, on_demand = False):
+                path = None, burst_size = None, on_demand = False,
+                keepalive = None):
     """Return a :class:`StreamSource` instance."""
 
     content_type = request_parser.headers.get('Content-Type',
@@ -300,4 +303,4 @@ def find_source(server, sock, address, request_parser,
         stream_source = BufferedRawSource
 
     return stream_source(server, sock, address, content_type, request_parser,
-                         path, burst_size, on_demand)
+                         path, burst_size, on_demand, keepalive)

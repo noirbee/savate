@@ -14,9 +14,10 @@ class ShoutcastSource(LowBitrateSource):
 
     def __init__(self, server, sock, address, content_type,
                  request_parser, path = None, burst_size = None,
-                 on_demand=False):
+                 on_demand = False, keepalive = None):
         LowBitrateSource.__init__(self, server, sock, address, content_type,
-                                   request_parser, path, burst_size, on_demand)
+                                  request_parser, path, burst_size, on_demand,
+                                  keepalive)
 
         self.set_headers()
 
