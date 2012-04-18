@@ -187,7 +187,7 @@ class ServerConfiguration(object):
                                                  mount_on_demand,
                                                  mount_keep_alive)
                     else:
-                        if (source_url, path) not in relay_index:
+                        if (source_url, path, None) not in relay_index:
                             server.logger.info('Trying to relay %s', source_url)
                             server.add_relay(source_url, path,
                                              burst_size=mount_burst_size,
