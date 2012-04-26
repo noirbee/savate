@@ -130,21 +130,28 @@ class HTTPRequest(looping.BaseIOEventHandler):
             else:
                 # New client for one of our sources
                 if self.server.sources.get(path, []):
-                    # FIXME: proper source selection
-                    source = random.choice(self.server.sources[path].keys())
-                    new_client = clients.find_client(self.server,
-                                                     source,
-                                                     self.sock,
-                                                     self.address,
-                                                     self.request_parser)
-                    # FIXME: this call may actually need to instatiate
-                    # the client itself (e.g. if the source needs some
-                    # dedicated code in its clients)
-                    source.new_client(new_client)
-                    # FIXME: see above wrt to proper source selection
-                    self.server.sources[path][source]['clients'][new_client.fileno()] = new_client
-                    loop.register(new_client,
-                                  looping.POLLOUT)
+                    # Check for server clients limit
+                    if self.server.clients_limit is not None and (
+                        self.server.clients_limit == self.server.clients_connected):
+                        response = HTTPResponse(503, b'Cannot handle response.'
+                                                b' Too many clients.')
+                    else:
+                        # FIXME: proper source selection
+                        source = random.choice(self.server.sources[path].keys())
+                        new_client = clients.find_client(self.server,
+                                                         source,
+                                                         self.sock,
+                                                         self.address,
+                                                         self.request_parser)
+                        # FIXME: this call may actually need to instatiate
+                        # the client itself (e.g. if the source needs some
+                        # dedicated code in its clients)
+                        source.new_client(new_client)
+                        # FIXME: see above wrt to proper source selection
+                        self.server.sources[path][source]['clients'][new_client.fileno()] = new_client
+                        self.server.clients_connected += 1
+                        loop.register(new_client,
+                                      looping.POLLOUT)
                 else:
                     # Stream does not exist
                     response = HTTPResponse(404, b'Stream Not Found')
@@ -198,6 +205,8 @@ class TCPServer(looping.BaseIOEventHandler):
         self.reloading = False
         self.timeouts = None
         self.io_timeouts = None
+        # keep a counter for limit on *streaming* clients
+        self.clients_connected = 0
 
     def create_loop(self):
         self.loop = looping.IOLoop(self.logger)
@@ -380,6 +389,7 @@ class TCPServer(looping.BaseIOEventHandler):
         # De-activate the timeout handling for this client
         self.remove_inactivity_timeout(client)
 
+        self.clients_connected -= 1
         source = client.source
         self.loop.unregister(client)
         if source is None:

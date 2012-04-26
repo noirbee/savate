@@ -49,6 +49,7 @@ class ServerConfiguration(object):
         self.configure_authorization()
         self.configure_status()
         self.configure_relays()
+        self.configure_limits()
 
     def reconfigure(self, config_dict):
         self.config_dict = config_dict
@@ -134,6 +135,7 @@ class ServerConfiguration(object):
 
         # Take new configuration into account
         self.configure_relays()
+        self.configure_limits()
 
     def configure_relays(self):
         conf = self.config_dict
@@ -226,3 +228,11 @@ class ServerConfiguration(object):
             handler_class = getattr(handler_module, handler_class)
             handler_instance = handler_class(server, **stat_handler)
             self.server.add_stats_handler(handler_instance)
+
+    def configure_limits(self):
+        # set limits for maximum simultaneous clients
+        try:
+            self.server.clients_limit = int(self.config_dict.get('clients_limit'))
+            self.server.logger.info('Set client limit to %d', self.server.clients_limit)
+        except (ValueError, TypeError):
+            self.server.clients_limit = None

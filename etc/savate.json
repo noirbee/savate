@@ -7,6 +7,7 @@
     "burst_size": "64k",
     "on_demand": false,
     "keepalive": 20,
+    "clients_limit": 4000,
     "mounts": [
         {
             "net_resolve_all": true,
