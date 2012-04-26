@@ -4,6 +4,7 @@ import collections
 import itertools
 import urlparse
 import socket
+import sys
 import re
 
 
@@ -41,6 +42,8 @@ class ServerConfiguration(object):
         self.server = server
         self.config_dict = config_dict
 
+        self.modules_loaded = set()  # keep trace of the modules we load
+
     def __getitem__(self, key):
         return self.config_dict[key]
 
@@ -59,6 +62,10 @@ class ServerConfiguration(object):
                                        self.server.statistics_handlers):
             if callable(getattr(handler, 'close', None)):
                 handler.close()
+        # make sure modules will be reloaded
+        for module_name in self.modules_loaded:
+            sys.modules.pop(module_name, None)
+        self.modules_loaded = set()
         # Drop authorization, status and statistics handlers, they will be
         # properly re-created anyway
         self.server.auth_handlers = []
@@ -202,6 +209,7 @@ class ServerConfiguration(object):
         for auth_handler in conf.get('auth', []):
             handler_name = auth_handler['handler']
             handler_module, handler_class = handler_name.rsplit('.', 1)
+            self.modules_loaded.add(handler_module)
             handler_module = __import__(handler_module, {}, {}, [''])
             handler_class = getattr(handler_module, handler_class)
             handler_instance = handler_class(server, conf, **auth_handler)
@@ -213,6 +221,7 @@ class ServerConfiguration(object):
         for handler_path, status_handler in conf.get('status', {}).items():
             handler_name = status_handler['handler']
             handler_module, handler_class = handler_name.rsplit('.', 1)
+            self.modules_loaded.add(handler_module)
             handler_module = __import__(handler_module, {}, {}, [''])
             handler_class = getattr(handler_module, handler_class)
             handler_instance = handler_class(server, conf, **status_handler)
@@ -224,6 +233,7 @@ class ServerConfiguration(object):
         for stat_handler in conf.get('statistics', {}):
             handler_name = stat_handler['handler']
             handler_module, handler_class = handler_name.rsplit('.', 1)
+            self.modules_loaded.add(handler_module)
             handler_module = __import__(handler_module, {}, {}, [''])
             handler_class = getattr(handler_module, handler_class)
             handler_instance = handler_class(server, **stat_handler)
