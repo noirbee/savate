@@ -24,6 +24,8 @@ class ShoutcastSource(LowBitrateSource):
         self.frame_parser = self.FRAME_PARSER_CLASS
         if self.frame_parser is not None:
             self.frame_parser = self.frame_parser()
+        self.working_buffer = self.output_buffer_data
+        self.output_buffer_data = b''
 
     def set_headers(self):
         # set icy metadata
@@ -40,6 +42,7 @@ class ShoutcastSource(LowBitrateSource):
 
     def on_demand_deactivate(self):
         LowBitrateSource.on_demand_deactivate(self)
+        self.working_buffer = b''
         if self.frame_parser is not None:
             self.frame_parser.clear()
 
@@ -50,7 +53,7 @@ class ShoutcastSource(LowBitrateSource):
 
     def metadata_parse(self):
         packet_cuts = []
-        packet = Buffer(self.output_buffer_data )
+        packet = Buffer(self.working_buffer)
 
         while packet:
             if self.bytes_count < 0:
@@ -71,26 +74,27 @@ class ShoutcastSource(LowBitrateSource):
                 self.bytes_count += len(mp3)
                 packet_cuts.append(mp3)
 
-        self.output_buffer_data = b''.join(cut.tobytes() for cut in packet_cuts)
+        self.working_buffer = b''.join(cut.tobytes() for cut in packet_cuts)
 
     def handle_packet(self, packet):
-        self.output_buffer_data += packet
+        self.working_buffer += packet
 
         if self.icy_metaint:
             self.metadata_parse()
 
-        if not self.output_buffer_data:
+        if not self.working_buffer:
             return
 
         if self.frame_parser is not None:
-            packet = self.frame_parser.feed(self.output_buffer_data)
+            self.output_buffer_data += self.frame_parser.feed(self.working_buffer)
         else:
-            packet = self.output_buffer_data
-        self.output_buffer_data= b''
+            self.output_buffer_data += self.working_buffer
+        self.working_buffer = b''
 
-        if packet:
-            self.publish_packet(packet)
-            self.burst_packets.append(packet)
+        if len(self.output_buffer_data) > self.TEMP_BUFFER_SIZE:
+            self.publish_packet(self.output_buffer_data)
+            self.burst_packets.append(self.output_buffer_data)
+            self.output_buffer_data = b''
 
 
 class MP3ShoutcastSource(ShoutcastSource):
