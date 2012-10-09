@@ -24,6 +24,7 @@ class Relay(looping.BaseIOEventHandler):
         self.path = path
         self.addr_info = addr_info
         self.burst_size = burst_size
+        self.on_demand = False
         self.keepalive = False
 
     def close(self):
@@ -81,11 +82,9 @@ class UDPRelay(Relay):
                     fake_response_parser = cyhttp11.HTTPClientParser()
                     fake_response_parser.body = self.initial_buffer_data
                     # FIXME: we're assuming an MPEG-TS source
-                    udp_source = MPEGTSSource(self.server, self.sock,
-                                              self.udp_address, b'video/MP2T',
-                                              fake_response_parser, self.path,
-                                              self.burst_size)
-                    self.server.add_source(self.path, udp_source)
+                    fake_response_parser.headers['Content-Type'] = 'video/MP2T'
+                    self.server.add_source(self.path, self.sock, self.udp_address,
+                                           fake_response_parser, self.burst_size)
                     break
 
 
