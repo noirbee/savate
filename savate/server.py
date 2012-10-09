@@ -118,20 +118,31 @@ class HTTPRequest(looping.BaseIOEventHandler):
         if self.request_parser.request_method in [b'PUT', b'SOURCE', b'POST']:
             self.server.register_source(sources.find_source(
                 self.server, self.sock, self.address, self.request_parser, path))
-        elif self.request_parser.request_method in [b'GET']:
+        elif self.request_parser.request_method in [b'GET', b'HEAD']:
             # New client
 
             # Is our client asking for status ?
             if path in self.server.status_handlers:
-                loop.register(self.server.status_handlers[path].get_status(self.sock,
-                                                                           self.address,
-                                                                           self.request_parser),
-                              looping.POLLOUT)
+                # FIXME: should we handle HEAD requests ?
+                if self.request_parser.request_method not in [b'GET']:
+                    response = HTTPResponse(405, b'Method Not Allowed')
+                else:
+                    loop.register(self.server.status_handlers[path].get_status(self.sock,
+                                                                               self.address,
+                                                                               self.request_parser),
+                                  looping.POLLOUT)
             else:
                 # New client for one of our sources
                 if self.server.sources.get(path, []):
+                    # Used by some clients to know the stream type
+                    # before attempting playout
+                    if self.request_parser.request_method in [b'HEAD']:
+                        source = self.server.sources[path].keys()[0]
+                        response = HTTPResponse(200, b'OK', {b'Content-Type': source.content_type,
+                                                             b'Content-Length': None,
+                                                             b'Connection': b'close'})
                     # Check for server clients limit
-                    if self.server.clients_limit is not None and (
+                    elif self.server.clients_limit is not None and (
                         self.server.clients_limit == self.server.clients_connected):
                         response = HTTPResponse(503, b'Cannot handle response.'
                                                 b' Too many clients.')
