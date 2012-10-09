@@ -1,18 +1,14 @@
 # -*- coding: utf-8 -*-
 
-cdef extern from "Python.h":
-
-        int PyObject_GetBuffer(object obj, Py_buffer *view, int flags)
-        void PyBuffer_Release(Py_buffer *view)
-
-        cdef int PyBUF_WRITABLE
+from cpython.mem cimport PyMem_Malloc, PyMem_Free
+from cpython.buffer cimport PyObject_GetBuffer, PyBuffer_Release, PyBUF_WRITABLE
+from libc.string cimport memset
 
 cdef extern from 'errno.h':
 
         cdef int errno
 
 import os
-from libc.stdlib cimport malloc, free
 
 from recvmmsg cimport recvmmsg as _recvmmsg
 
@@ -27,12 +23,16 @@ def recvmmsg(int fd, object buffers, int flags = 0):
     buffer_number = len(buffers)
 
     try:
-        iovectors = <iovec *> malloc(buffer_number * sizeof(iovec))
-        messages_vectors = <mmsghdr *> malloc(buffer_number * sizeof(mmsghdr))
-        py_buffers = <Py_buffer *> malloc(buffer_number * sizeof(Py_buffer))
+        iovectors = <iovec *> PyMem_Malloc(buffer_number * sizeof(iovec))
+        messages_vectors = <mmsghdr *> PyMem_Malloc(buffer_number * sizeof(mmsghdr))
+        py_buffers = <Py_buffer *> PyMem_Malloc(buffer_number * sizeof(Py_buffer))
 
         if not iovectors or not messages_vectors or not py_buffers:
             raise MemoryError
+
+        memset(iovectors, 0, buffer_number * sizeof(iovec))
+        memset(messages_vectors, 0, buffer_number * sizeof(mmsghdr))
+        memset(py_buffers, 0, buffer_number * sizeof(Py_buffer))
 
         for i in range(buffer_number):
             if PyObject_GetBuffer(buffers[i], &(py_buffers[i]), PyBUF_WRITABLE) != 0:
@@ -64,6 +64,6 @@ def recvmmsg(int fd, object buffers, int flags = 0):
     finally:
         for i in range(buffer_number):
             PyBuffer_Release(&(py_buffers[i]))
-        free(iovectors)
-        free(messages_vectors)
-        free(py_buffers)
+        PyMem_Free(iovectors)
+        PyMem_Free(messages_vectors)
+        PyMem_Free(py_buffers)
