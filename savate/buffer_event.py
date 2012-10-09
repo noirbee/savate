@@ -31,6 +31,9 @@ class BufferOutputHandler(object):
     def empty(self):
         return len(self.buffer_queue) == 0
 
+    def queue_size(self):
+        return sum(len(buf) for buf in self.buffer_queue)
+
     def flush(self):
         self.ready = True
         total_sent_bytes = 0

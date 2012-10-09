@@ -33,6 +33,9 @@ class JSONStatusClient(BaseStatusClient):
     def get_status(self, sock, address, request_parser):
         sources_dict = {}
         total_clients_number = 0
+
+        queue_sizes = []
+
         for path, sources in self.server.sources.items():
             sources_dict[path] = {}
             for source, source_dict in sources.items():
@@ -42,10 +45,18 @@ class JSONStatusClient(BaseStatusClient):
                 for fd, client in source_dict['clients'].items():
                     sources_dict[path][source_address][fd] = '%s:%s' % client.address
                     total_clients_number += 1
+                    queue_sizes.append(sum(len(elt) for elt in client.output_buffer.buffer_queue))
 
+        queue_sizes.sort()
+        if not queue_sizes:
+            queue_sizes = [-1]
         status_dict = {
             'total_clients_number': total_clients_number,
             'pid': os.getpid(),
+            'max_buffer_queue_size': queue_sizes[-1],
+            'min_buffer_queue_size': queue_sizes[0],
+            'median_buffer_queue_size': queue_sizes[total_clients_number / 2],
+            'average_buffer_queue_size': sum(queue_sizes) / len(queue_sizes),
             'sources': sources_dict,
             }
 
