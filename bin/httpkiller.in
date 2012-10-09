@@ -2,16 +2,52 @@
 # -*- coding: utf-8 -*-
 
 import socket
+import collections
 import errno
 import urlparse
 import os
+import time
+
 import cyhttp11
 from savate import helpers
 from savate.helpers import HTTPError, HTTPParseError, event_mask_str
 from savate import buffer_event
 from savate import looping
 
-TOTAL_BYTES = 0
+
+class BandwidthCount(object):
+
+    def __init__(self, maxsize = 10**6):
+        self.data_points = collections.deque(maxlen = maxsize)
+        self.total_bytes = 0
+
+    def add_point(self, nb_bytes, point_time = None):
+        if point_time == None:
+            point_time = time.time()
+        self.data_points.append((nb_bytes, point_time))
+        self.total_bytes += nb_bytes
+
+    def __len__(self):
+        return len(self.data_points)
+
+    def __iadd__(self, nb_bytes):
+        self.add_point(nb_bytes)
+        return self
+
+    def sum(self):
+        return sum(data[0] for data in self.data_points)
+
+    def compute_bitrate(self):
+        return self.compute_bandwidth() * 8
+
+    def compute_bandwidth(self):
+        if self.data_points:
+            return self.sum() / (self.data_points[-1][1] - self.data_points[0][1])
+        else:
+            return 0
+
+
+TOTAL_BYTES = BandwidthCount()
 
 class HTTPClient(looping.BaseIOEventHandler):
 
@@ -189,9 +225,6 @@ if __name__ == '__main__':
                 break
         return '%.2f %s' % (float(nb_bytes) / 2 ** (index * 10), units[index])
 
-    def compute_bandwidth(start_time, end_time, nb_bytes):
-        return pretty_size(nb_bytes / (end_time - start_time))
-
     ioloop = looping.IOLoop(logger)
 
     try:
@@ -234,9 +267,10 @@ if __name__ == '__main__':
             ioloop.once(1)
             if time.time() - last_time > options.update_interval:
                 logger.info('Got %s, %d handlers running (%d waiting), %s/s, %s remaining',
-                            pretty_size(TOTAL_BYTES), len(ioloop.handlers), len(clients_queue),
-                            compute_bandwidth(start_time, time.time(), TOTAL_BYTES),
-                            pretty_size(sum(handler.remaining_nb_bytes() for handler in ioloop.handlers.values())))
+                            pretty_size(TOTAL_BYTES.total_bytes), len(ioloop.handlers), len(clients_queue),
+                            pretty_size(TOTAL_BYTES.compute_bandwidth()),
+                            pretty_size(sum(handler.remaining_nb_bytes() for handler in ioloop.handlers.values())),
+                            )
                 last_time = time.time()
     finally:
-        logger.info('Got %s', pretty_size(TOTAL_BYTES))
+        logger.info('Got %s', pretty_size(TOTAL_BYTES.sum()))
