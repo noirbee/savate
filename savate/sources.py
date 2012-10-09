@@ -111,6 +111,11 @@ class StreamSource(looping.BaseIOEventHandler):
                     break
                 else:
                     self.handle_packet(packet)
+                    if len(packet) < self.RECV_BUFFER_SIZE:
+                        # High chances we would get EAGAIN on the next
+                        # iteration. We'll be called again soon if
+                        # there is still data available.
+                        break
         else:
             self.server.logger.error('%s: unexpected eventmask %s', self, eventmask)
 
