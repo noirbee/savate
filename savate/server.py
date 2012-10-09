@@ -16,6 +16,7 @@ except ImportError:
 
 import cyhttp11
 
+from savate import buffer_event
 from savate import looping
 from savate import configuration
 from savate import helpers
@@ -414,6 +415,7 @@ class TCPServer(looping.BaseIOEventHandler):
                                              )
 
     def publish_packet(self, source, packet):
+        packet = buffer_event.make_buffer(packet)
         for client in self.sources[source.path][source]['clients'].values():
             client.add_packet(packet)
 

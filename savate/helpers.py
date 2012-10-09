@@ -66,8 +66,8 @@ class HTTPEventHandler(BaseIOEventHandler):
         self.address = address
         self.request_parser = request_parser
 
-        self.output_buffer = buffer_event.BufferOutputHandler(sock)
-        self.output_buffer.add_buffer(response.as_bytes())
+        self.output_buffer = buffer_event.BufferOutputHandler(sock,
+                                                              (response.as_bytes(),))
 
         # statistics
         self.status = response.status

@@ -29,7 +29,7 @@ class BufferOutputHandler(object):
         self.buffer_queue = collections.deque(make_buffer(buff) for buff in initial_buffer_queue)
 
     def add_buffer(self, buff):
-        self.buffer_queue.append(make_buffer(buff))
+        self.buffer_queue.append(buff)
 
     def empty(self):
         return len(self.buffer_queue) == 0
