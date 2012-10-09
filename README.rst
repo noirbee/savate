@@ -7,8 +7,12 @@ savate is an experimental live audio/video HTTP streaming server.
 License
 =======
 
-savate is © 2011 Nicolas Noirbent, and is available under the AGPL3+
-license.
+savate is available under the `AGPL3+ license
+<http://www.gnu.org/licenses/agpl-3.0.html>`_.
+
+© 2011-2012 Nicolas Noirbent
+
+© 2011-2012 SmartJog S.A.S.
 
 Build and installation
 =======================
