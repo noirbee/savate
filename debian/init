@@ -70,7 +70,7 @@ do_start()
 		|| return 1
 
         # FIXME: this should be handled inside savate with setrlimit()
-        ulimit -SH -n 10000
+        ulimit -n 10000
 
         # Really start the daemon now
 	start-stop-daemon --start --quiet --pidfile $PIDFILE --name $NAME --startas $DAEMON -- \
