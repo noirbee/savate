@@ -280,9 +280,12 @@ sources_mapping = {
     b'video/x-flv': FLVSource,
     b'application/x-flv': FLVSource,
     b'audio/mpeg': MP3ShoutcastSource,
+    b'audio/mp3': MP3ShoutcastSource,
     b'audio/aacp': ADTSShoutcastSource,
+    b'audio/aac': ADTSShoutcastSource,
     b'application/octet-stream': BufferedRawSource,
     b'video/MP2T': MPEGTSSource,
+    b'video/mpeg': MPEGTSSource,
     }
 
 
