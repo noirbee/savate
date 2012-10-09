@@ -47,6 +47,9 @@ class BufferOutputHandler(object):
                 if sent_bytes < len(self.buffer_queue[0]):
                     # One of the buffers was partially sent
                     self.buffer_queue[0] = buffer_slice(self.buffer_queue[0], sent_bytes)
+                    # We assume we can't send any more data
+                    self.ready = False
+                    break
                 else:
                     self.buffer_queue.popleft()
         except IOError as exc:
