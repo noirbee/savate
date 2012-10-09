@@ -7,6 +7,7 @@ import errno
 import urlparse
 import os
 import time
+import uuid
 
 import cyhttp11
 from savate import helpers
@@ -202,6 +203,7 @@ if __name__ == '__main__':
     option_parser.add_option('--update-interval', type = float, default = 1, dest = 'update_interval', help = 'Interval in seconds between statistics output', metavar = 'INTERVAL')
     option_parser.add_option('--rate', type = int, default = -1, dest = 'rate', help = 'Client connection rate by second')
     option_parser.add_option('--http-host', dest = 'http_host', help = 'Use HOSTNAME for the HTTP Host: header', metavar = 'HOSTNAME')
+    option_parser.add_option('--random-path', dest = 'random_path', action = 'store_true', default = False, help = 'Add a random string to the URLs')
 
     options, urls = option_parser.parse_args()
 
@@ -235,7 +237,7 @@ if __name__ == '__main__':
                                            socket.AF_UNSPEC,
                                            socket.SOCK_STREAM,
                                            socket.IPPROTO_TCP)
-            targets.extend((url, addr_info, options.http_host) for addr_info in addr_infos)
+            targets.extend([url, addr_info] for addr_info in addr_infos)
             logger.info('Address info for %s is %s', url, addr_infos)
 
         clients_queue = collections.deque(random.choice(targets) for i in range(options.num_conns))
@@ -260,7 +262,10 @@ if __name__ == '__main__':
             tmp_clients_nb = min(options.concurrent - len(ioloop.handlers), tmp_clients_nb)
 
             for i in range(min(tmp_clients_nb, len(clients_queue))):
-                tmp_client = HTTPClient(ioloop, *clients_queue.popleft())
+                url, addr_info = clients_queue.popleft()
+                if options.random_path:
+                    url = '/'.join((url, str(uuid.uuid4())))
+                tmp_client = HTTPClient(ioloop, url, addr_info, options.http_host)
                 ioloop.register(tmp_client, looping.POLLOUT)
 
             ioloop.once(1)
