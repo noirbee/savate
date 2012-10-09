@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 
+import socket
+
 from savate import helpers
 from savate import looping
 
@@ -8,6 +10,8 @@ class StreamSource(looping.BaseIOEventHandler):
 
     # Incoming maximum buffer size
     RECV_BUFFER_SIZE = 64 * 2**10
+    # Socket low water mark
+    RECV_LOW_WATER_MARK = 32 * 2**10
     # Stay connected for 20 seconds to the source when all clients are
     # disconnected
     ON_DEMAND_TIMEOUT = 20
@@ -30,6 +34,8 @@ class StreamSource(looping.BaseIOEventHandler):
         self.path = path or self.request_parser.request_path
         self.burst_size = burst_size
         self.keepalive = keepalive
+
+        self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_RCVLOWAT, self.RECV_LOW_WATER_MARK)
 
         self.on_demand = self.RUNNING if on_demand else self.DISABLED
         self.relay = server.relays.get(sock)  # some sources doesn't have relay
@@ -218,6 +224,9 @@ class MPEGTSSource(FixedPacketSizeSource):
     TEMP_BUFFER_SIZE = 50 * RECV_BUFFER_SIZE
     BURST_SIZE = 50 * RECV_BUFFER_SIZE
 
+    # Socket low water mark
+    RECV_LOW_WATER_MARK = 64 * 2**10
+
 
 class LowBitrateSource(BufferedRawSource):
 
@@ -226,6 +235,7 @@ class LowBitrateSource(BufferedRawSource):
     # the use of a lower value by default
 
     TEMP_BUFFER_SIZE = 8 * 2**10
+    RECV_LOW_WATER_MARK = 2 * 2**10
 
 
 # Note that recvmmsg() requires Linux >= 2.6.33 and glibc >= 2.12
