@@ -416,7 +416,7 @@ class TCPServer(looping.BaseIOEventHandler):
 
     def publish_packet(self, source, packet):
         packet = buffer_event.make_buffer(packet)
-        for client in self.sources[source.path][source]['clients'].values():
+        for client in self.sources[source.path][source]['clients'].itervalues():
             client.add_packet(packet)
 
     def serve_forever(self):
