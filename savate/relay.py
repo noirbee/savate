@@ -91,7 +91,7 @@ class UDPRelay(Relay):
 class HTTPRelay(Relay):
 
     REQUEST_METHOD = b'GET'
-    HTTP_VERSION = b'HTTP/1.1'
+    HTTP_VERSION = b'HTTP/1.0'
     RESPONSE_MAX_SIZE = 4096
 
     def __init__(self, server, url, path, addr_info = None, burst_size = None,
