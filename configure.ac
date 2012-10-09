@@ -7,6 +7,7 @@ AC_INIT([savate], [0.5.0~dev], [nicolas@noirbent.fr])
 AC_CONFIG_HEADERS([config.h])
 
 AM_INIT_AUTOMAKE([foreign])
+m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES])
 
 # Checks for programs.
 AC_PROG_CC
