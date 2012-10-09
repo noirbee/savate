@@ -1,15 +1,16 @@
 #! /usr/bin/python
 # -*- coding: utf-8 -*-
 
-import socket
 import collections
 import errno
-import urlparse
 import os
+import socket
 import time
+import urlparse
 import uuid
 
 import cyhttp11
+
 from savate import helpers
 from savate.helpers import HTTPError, HTTPParseError, event_mask_str
 from savate import buffer_event
