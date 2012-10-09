@@ -152,9 +152,14 @@ class HTTPRelay(Relay):
 
     def _build_request(self):
         # FIXME: URL encoding for the request path
-        # FIXME: params, query and fragments are discarded
-        request_line = b'%s %s %s' % (self.REQUEST_METHOD, self.parsed_url.path,
-                                     self.HTTP_VERSION)
+        selector = self.parsed_url.path or b'/'
+        if self.parsed_url.params:
+            selector = b';'.join([selector, self.parsed_url.params])
+        if self.parsed_url.query:
+            selector = b'?'.join([selector, self.parsed_url.query])
+
+        request_line = b'%s %s %s' % (self.REQUEST_METHOD, selector,
+                                      self.HTTP_VERSION)
         # FIXME: should we send some more headers ?
         headers_lines = helpers.build_http_headers({
             b'Host': self.parsed_url.hostname,
