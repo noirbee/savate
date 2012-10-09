@@ -353,7 +353,7 @@ class TCPServer(looping.BaseIOEventHandler):
             # migrate the clients to it
             tmp_source = self.sources[source.path].pop(source)
             # Simple even distribution amongst the remaining sources
-            for client, new_source in itertools.izip(tmp_source['clients'].values(),
+            for client, new_source in itertools.izip(tmp_source['clients'].itervalues(),
                                                      itertools.cycle(self.sources[source.path].keys())):
                 client.source = new_source
                 self.sources[source.path][new_source]['clients'][client.fileno()] = client
