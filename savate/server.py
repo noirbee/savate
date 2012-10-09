@@ -246,16 +246,11 @@ class TCPServer(looping.BaseIOEventHandler):
                 if exc.errno in (errno.EMFILE, errno.ENFILE):
                     # Too many open files
                     self.logger.error('Cannot accept, too many open files')
-                    # Try to close() and re-open our listening socket,
-                    # since there is no other way to clear the backlog
-                    # FIXME: remove from poller object, and try to
-                    # re-add it later ? Do not try to accept() once
-                    # we've reached the open file descriptors / max
-                    # clients limit ?
-                    self.loop.unregister(self)
-                    self.close()
-                    self.create_socket()
-                    self.loop.register(self, looping.POLLIN)
+                    # Shutdown the socket to try an clear the backlog,
+                    # which should disconnect the client; then
+                    # re-listen() on it immediately
+                    self.sock.shutdown(socket.SHUT_RD)
+                    self.sock.listen(self.BACKLOG)
                 else:
                     raise
 
