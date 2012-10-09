@@ -218,8 +218,7 @@ if __name__ == '__main__':
     logger.addHandler(handler)
     logger.setLevel(logging.INFO)
 
-    def pretty_size(nb_bytes):
-        units = ['B', 'KB', 'MB', 'GB', 'TB', 'PB']
+    def pretty_size(nb_bytes, units = ['B', 'KB', 'MB', 'GB', 'TB', 'PB']):
         for index, unit in enumerate(units[1:]):
             if abs(nb_bytes) < 2 ** ((index + 1) * 10):
                 break
@@ -266,9 +265,11 @@ if __name__ == '__main__':
 
             ioloop.once(1)
             if time.time() - last_time > options.update_interval:
-                logger.info('Got %s, %d handlers running (%d waiting), %s/s, %s remaining',
+                logger.info('Got %s, %d handlers running (%d waiting), %s/s, %s/s, %s remaining',
                             pretty_size(TOTAL_BYTES.total_bytes), len(ioloop.handlers), len(clients_queue),
                             pretty_size(TOTAL_BYTES.compute_bandwidth()),
+                            pretty_size(TOTAL_BYTES.compute_bitrate(),
+                                        units = ['b', 'Kb', 'Mb', 'Gb', 'Tb', 'Pb']),
                             pretty_size(sum(handler.remaining_nb_bytes() for handler in ioloop.handlers.values())),
                             )
                 last_time = time.time()
