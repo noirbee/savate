@@ -265,7 +265,8 @@ class TCPServer(looping.BaseIOEventHandler):
 
     def handle_new_incoming(self):
         client_socket, client_address = self.sock.accept()
-        self.logger.info('New client %s, %s', client_socket, client_address)
+        self.logger.info('New client <fd:%d, id:0x%s>, %s',
+                         client_socket.fileno(), id(client_socket), client_address)
         new_handler = HTTPRequest(self, client_socket, client_address)
         self.reset_inactivity_timeout(new_handler)
 
