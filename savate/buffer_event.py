@@ -20,6 +20,9 @@ except NameError:
 
 class BufferOutputHandler(object):
 
+    # FIXME: make this configurable
+    MAX_QUEUE_SIZE = 24 * 2**20
+
     def __init__(self, sock, initial_buffer_queue = ()):
         self.sock = sock
         self.ready = True
@@ -51,4 +54,6 @@ class BufferOutputHandler(object):
                 self.ready = False
             else:
                 raise
+        if self.queue_size() > self.MAX_QUEUE_SIZE:
+            raise Exception('Queue size too large for %s: %d', self, self.queue_size())
         return total_sent_bytes
