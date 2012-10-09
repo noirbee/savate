@@ -67,12 +67,12 @@ EXTRA_DIST = lllsfd.pyx lllsfd.pxd recvmmsg.pyx recvmmsg.pxd audio_parser.pyx au
 MAINTAINERCLEANFILES = mp3.c adts.c ${BUILT_SOURCES}
 
 mp3.c: Makefile.in mp3.pyx
-	cython --verbose mp3.pyx
+	cython --verbose $(srcdir)/$*.pyx -o $@
 
 adts.c: Makefile.in adts.pyx
-	cython --verbose adts.pyx
+	cython --verbose $(srcdir)/$*.pyx -o $@
 
 # A kinda clever rule used to avoid writing each Cython compilation
 # rule by hand
 $(BUILT_SOURCES): %.c: Makefile.in %.pyx %.pxd
-	cython --verbose $*.pyx
+	cython --verbose $(srcdir)/$*.pyx -o $@
