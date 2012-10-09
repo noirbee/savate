@@ -175,7 +175,7 @@ class ServerConfiguration(object):
             for source_url in mount_conf['source_urls']:
                 parsed_url = urlparse.urlparse(source_url)
                 if parsed_url.scheme in ('udp', 'multicast'):
-                    if (source_url, path) not in relay_index:
+                    if (source_url, path, None) not in relay_index:
                         server.logger.info('Trying to relay %s', source_url)
                         server.add_relay(source_url, path,
                                          burst_size=mount_burst_size)
