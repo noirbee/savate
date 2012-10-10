@@ -269,11 +269,11 @@ try:
         def recv_packet(self, _buffer_size = None):
             # We ignore _buffer_size altogether here
             buffers = [bytearray(self.RECV_BUFFER_SIZE) for i in range(self.recv_buffer_count)]
-            buffers = helpers.handle_eagain(recvmmsg, self.sock.fileno(), buffers) or ()
+            buffers = helpers.handle_eagain(recvmmsg, self.sock.fileno(), buffers)
             if buffers is None:
                 return None
             if not buffers:
-                return b''
+                return bytearray()
             # Automagically grow/shrink the buffer count as needed
             if len(buffers) >= self.recv_buffer_count:
                 self.recv_buffer_count = min(self.recv_buffer_count * 2, self.RECV_BUFFER_COUNT_MAX)
@@ -281,7 +281,7 @@ try:
                 self.recv_buffer_count = max(len(buffers), self.RECV_BUFFER_COUNT_MIN)
 
             self.server.update_activity(self)
-            return b''.join(buffers)
+            return bytearray().join(buffers)
 
 
 except ImportError:
