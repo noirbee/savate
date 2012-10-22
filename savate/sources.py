@@ -11,7 +11,7 @@ class StreamSource(looping.BaseIOEventHandler):
     # Incoming maximum buffer size
     RECV_BUFFER_SIZE = 64 * 2**10
     # Socket low water mark
-    RECV_LOW_WATER_MARK = 32 * 2**10
+    RECV_LOW_WATER_MARK = 1
     # Stay connected for 20 seconds to the source when all clients are
     # disconnected
     ON_DEMAND_TIMEOUT = 20
@@ -230,7 +230,7 @@ class MPEGTSSource(FixedPacketSizeSource):
     BURST_SIZE = 50 * RECV_BUFFER_SIZE
 
     # Socket low water mark
-    RECV_LOW_WATER_MARK = 64 * 2**10
+    RECV_LOW_WATER_MARK = 1
 
 
 class LowBitrateSource(BufferedRawSource):
@@ -240,7 +240,7 @@ class LowBitrateSource(BufferedRawSource):
     # the use of a lower value by default
 
     TEMP_BUFFER_SIZE = 8 * 2**10
-    RECV_LOW_WATER_MARK = 2 * 2**10
+    RECV_LOW_WATER_MARK = 1
 
 
 # Note that recvmmsg() requires Linux >= 2.6.33 and glibc >= 2.12
