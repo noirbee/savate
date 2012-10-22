@@ -224,10 +224,10 @@ class MPEGTSSource(FixedPacketSizeSource):
     # Incoming maximum buffer size; 188 * 7 = 1316 is the largest
     # multiple of 188 that is smaller than the typical MTU size of
     # 1500
-    RECV_BUFFER_SIZE = 7 * MPEGTS_PACKET_SIZE
+    RECV_BUFFER_SIZE = 50 * 7 * MPEGTS_PACKET_SIZE
 
-    TEMP_BUFFER_SIZE = 50 * RECV_BUFFER_SIZE
-    BURST_SIZE = 50 * RECV_BUFFER_SIZE
+    TEMP_BUFFER_SIZE = 2 * RECV_BUFFER_SIZE
+    BURST_SIZE = 2 * RECV_BUFFER_SIZE
 
     # Socket low water mark
     RECV_LOW_WATER_MARK = 1
