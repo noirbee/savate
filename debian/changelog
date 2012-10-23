@@ -1,3 +1,9 @@
+savate (0.5.0-2) unstable; urgency=low
+
+  * Fix missing /usr/bin/ programs in binary packages.
+
+ -- Nicolas Noirbent <nicolas.noirbent@smartjog.com>  Tue, 23 Oct 2012 14:56:43 +0200
+
 savate (0.5.0-1) unstable; urgency=low
 
   * New upstream release.
