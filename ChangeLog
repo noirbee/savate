@@ -5,9 +5,15 @@ Version 0.5.0~dev
 	* Unknown Content-Type streams are now accepted and handled in a
 	  generic way.
 	* Fix the connect_ex() return value handling.
+	* Burst size is now configurable.
 	* Add a low-bitrate source type, useful to avoid timeouts on audio
 	  streams.
 	* Added basic support for shoutcast metadata relaying.
+	* Added MP3 support.
+	* Added AAC (ADTS) support.
+	* Added on-demand relaying.
+	* Added plugin possibility for statistics.
+	* Added keepalive period for on-demand relaying.
 	* Added client buffer queue sizes statistics to JSON status.
 	* httpkiller: add --random-path option.
 	* Properly handle HTTP HEAD requests for streams.
