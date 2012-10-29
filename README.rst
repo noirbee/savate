@@ -33,7 +33,10 @@ Building
 --------
 
 If building from the git repository, you will need `Cython
-<http://cython.org/>`_.
+<http://cython.org/>`_. To build the manpages, you will also need the
+``rst2man`` utility, usually found in the ``python-docutils``
+package. Otherwise you can obtain it from
+`<http://docutils.sourceforge.net/>`_.
 
 You need to be able to build Python extensions to build savate. On
 most distributions this means installing the ``python-dev`` or

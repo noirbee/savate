@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.67])
-AC_INIT([savate], [0.5.0], [nicolas@noirbent.fr])
+AC_INIT([savate], [0.5.1~dev], [nicolas@noirbent.fr])
 
 AC_CONFIG_HEADERS([config.h])
 
@@ -14,6 +14,8 @@ AC_PROG_CC
 AC_PROG_LIBTOOL
 AM_PATH_PYTHON
 AC_PYTHON_DEVEL
+AC_PATH_PROG(RST2MAN, rst2man)
+
 
 # recvmmsg() support, first off the CLI switch, disabled by default
 AC_ARG_ENABLE([recvmmsg],
@@ -41,4 +43,5 @@ AC_OUTPUT([
 	savate/Makefile
 	bin/Makefile
 	etc/Makefile
+	doc/Makefile
 ])

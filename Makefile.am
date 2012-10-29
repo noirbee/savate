@@ -1,3 +1,3 @@
-SUBDIRS = bin etc savate
+SUBDIRS = bin etc savate doc
 
 EXTRA_DIST = README.rst
