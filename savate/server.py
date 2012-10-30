@@ -134,7 +134,7 @@ class HTTPRequest(looping.BaseIOEventHandler):
                                   looping.POLLOUT)
             else:
                 # New client for one of our sources
-                if self.server.sources.get(path, []):
+                if path in self.server.sources:
                     # Used by some clients to know the stream type
                     # before attempting playout
                     if self.request_parser.request_method in [b'HEAD']:
