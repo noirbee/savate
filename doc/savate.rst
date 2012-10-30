@@ -34,6 +34,17 @@ Options
 --foreground    Run in the foreground, do not daemonise
 
 
+Signals
+-------
+
+savate reacts to the following signals:
+
+* *SIGTERM*, *SIGINT*: stops the server.
+* *SIGHUP*: reloads server configuration.
+* *SIGUSR1*: graceful stop. savate will stop accepting any new
+  connections, but will continue streaming to connected clients.
+
+
 Authors
 -------
 
