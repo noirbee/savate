@@ -52,3 +52,9 @@ License AGPLv3+: GNU Affero GPL version 3 or later
 <http://gnu.org/licenses/agpl.html>.  This is free software: you are
 free to change and redistribute it. There is NO WARRANTY, to the
 extent permitted by law.
+
+
+See also
+--------
+
+**savate.json**\(5)
