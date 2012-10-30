@@ -5,7 +5,7 @@
 Experimental live audio/video HTTP server
 =========================================
 
-:Manual section: 8
+:Manual section: 1
 
 
 Synopsis
