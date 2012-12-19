@@ -325,6 +325,9 @@ class TCPServer(looping.BaseIOEventHandler):
             # cancel timeout
             self.timeouts.remove_timeout(source.path)
             for client in self.keepalived[source.path]:
+                if client.closed:
+                    # the client disconnected so we just ignore it
+                    continue
                 client.source = source
                 self.sources[source.path][source]['clients'][client.fileno()] = client
 
