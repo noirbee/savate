@@ -4,6 +4,9 @@ import errno
 import collections
 
 
+class QueueSizeExceeded(Exception):
+    pass
+
 # FIXME: should this be a method of BufferEvent below ?
 try:
     memoryview
@@ -58,5 +61,6 @@ class BufferOutputHandler(object):
             else:
                 raise
         if self.queue_size() > self.MAX_QUEUE_SIZE:
-            raise Exception('Queue size too large for %s: %d', self, self.queue_size())
+            raise QueueSizeExceeded('Queue size too large for %s: %d',
+                                    self, self.queue_size())
         return total_sent_bytes
