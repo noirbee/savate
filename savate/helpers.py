@@ -84,8 +84,9 @@ class HTTPEventHandler(BaseIOEventHandler):
     def flush(self):
         try:
             bytes_sent = self.output_buffer.flush()
-        except buffer_event.QueueSizeExceeded:
-            self.server.logger.info('Client queue size exceeded')
+        except buffer_event.QueueSizeExceeded as exc:
+            self.server.logger.info('Client queue size exceeded for %s: %s' %
+                                    exc.message)
             self.close()
             return
 
