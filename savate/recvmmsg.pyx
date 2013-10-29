@@ -20,7 +20,7 @@ def recvmmsg(int fd, object buffers, int flags = 0):
 
     ret_buffers = buffers
 
-    buffer_number = len(buffers)
+    cdef int buffer_number = len(buffers)
 
     try:
         iovectors = <iovec *> PyMem_Malloc(buffer_number * sizeof(iovec))
