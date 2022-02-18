@@ -9,10 +9,7 @@ import re
 import itertools
 import errno
 import urlparse
-try:
-    import json
-except ImportError:
-    import simplejson as json
+import json
 
 import cyhttp11
 

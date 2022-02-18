@@ -1,11 +1,9 @@
 # -*- coding: utf-8 -*-
 
 import os
-try:
-    import json
-except ImportError:
-    import simplejson as json
+import json
 import pprint
+
 from savate.helpers import HTTPEventHandler, HTTPResponse
 
 

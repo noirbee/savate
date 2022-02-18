@@ -17,10 +17,7 @@ parser.add_option('--foreground', dest = 'background', action = 'store_false', h
 
 options, args = parser.parse_args()
 
-try:
-    import json
-except ImportError:
-    import simplejson as json
+import json
 
 with open(options.config_file) as conffile:
     conf = json.load(conffile)
