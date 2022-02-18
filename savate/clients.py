@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from savate.looping import POLLOUT
-from savate.helpers import HTTPEventHandler, HTTPResponse, Buffer
+from savate.helpers import HTTPEventHandler, HTTPResponse
 from savate.sources import ShoutcastSource
 
 
@@ -85,7 +85,7 @@ class ShoutcastClient(StreamClient):
 
     def add_packet_with_metadata(self, packet):
         packet_cuts = []
-        packet = Buffer(packet)
+        packet = memoryview(packet)
 
         while packet:
             if self.bytes_count + len(packet) > self.ICY_META_INTERVAL:
@@ -96,10 +96,10 @@ class ShoutcastClient(StreamClient):
                 if self.metadata != self.source.metadata:
                     # new metadata
                     self.metadata = self.source.metadata
-                    packet_cuts.append(Buffer(self.metadata))
+                    packet_cuts.append(memoryview(self.metadata))
                 else:
                     # insert 0
-                    packet_cuts.append(Buffer(b'\0'))
+                    packet_cuts.append(memoryview(b'\0'))
 
                 self.bytes_count = 0
             else:

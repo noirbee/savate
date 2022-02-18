@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 
-from savate.helpers import Buffer
 from savate.sources import LowBitrateSource
 from savate.mp3 import MP3Parser
 from savate.adts import ADTSParser
@@ -53,7 +52,7 @@ class ShoutcastSource(LowBitrateSource):
 
     def metadata_parse(self):
         packet_cuts = []
-        packet = Buffer(self.working_buffer)
+        packet = memoryview(self.working_buffer)
 
         while packet:
             if self.bytes_count < 0:
