@@ -36,7 +36,7 @@ class HTTPRequest(looping.BaseIOEventHandler):
         self.sock.setblocking(False)
         self.address = address
         self.request_size = 0
-        self.request_buffer = b''
+        self.request_buffer = b""
         self.request_parser = cyhttp11.HTTPParser()
 
     def close(self) -> None:
@@ -50,43 +50,41 @@ class HTTPRequest(looping.BaseIOEventHandler):
 
     def handle_read(self) -> None:
         while True:
-            tmp_buffer = helpers.handle_eagain(self.sock.recv,
-                                               self.REQUEST_MAX_SIZE - self.request_size)
+            tmp_buffer = helpers.handle_eagain(self.sock.recv, self.REQUEST_MAX_SIZE - self.request_size)
             if tmp_buffer is None:
                 # EAGAIN, we'll come back later
                 break
-            elif tmp_buffer == b'':
-                raise HTTPError('Unexpected end of stream from %s, %s,' %
-                                (self.sock, self.address))
+            elif tmp_buffer == b"":
+                raise HTTPError("Unexpected end of stream from %s, %s," % (self.sock, self.address))
             self.request_buffer = self.request_buffer + tmp_buffer
             self.request_size += len(tmp_buffer)
             self.request_parser.execute(self.request_buffer)
             if self.request_parser.has_error():
-                raise HTTPParseError('Invalid HTTP request from %s, %s' %
-                                     (self.sock, self.address))
+                raise HTTPParseError("Invalid HTTP request from %s, %s" % (self.sock, self.address))
             elif self.request_parser.is_finished():
                 # Transform this into the appropriate handler
                 self.transform_request()
                 break
             elif self.request_size >= self.REQUEST_MAX_SIZE:
-                raise HTTPParseError('Oversized HTTP request from %s, %s' %
-                                     (self.sock, self.address))
+                raise HTTPParseError("Oversized HTTP request from %s, %s" % (self.sock, self.address))
 
     def transform_request(self) -> None:
         loop = self.server.loop
         # FIXME: should we shutdown() read or write depending on what
         # we do here ? (i.e. SHUT_RD for GETs, SHUT_WD for sources)
 
-        self.server.logger.info('%s:%s %s %s %s, request headers: %s',
-                                self.address[0], self.address[1],
-                                self.request_parser.request_method,
-                                self.request_parser.request_path,
-                                self.request_parser.http_version,
-                                self.request_parser.headers)
+        self.server.logger.info(
+            "%s:%s %s %s %s, request headers: %s",
+            self.address[0],
+            self.address[1],
+            self.request_parser.request_method,
+            self.request_parser.request_path,
+            self.request_parser.http_version,
+            self.request_parser.headers,
+        )
 
         # Squash any consecutive / into one
-        self.request_parser.request_path = re.sub(b'//+', b'/',
-                                                  self.request_parser.request_path)
+        self.request_parser.request_path = re.sub(b"//+", b"/", self.request_parser.request_path)
 
         self.server.request_in(self.request_parser, self.sock)
 
@@ -97,95 +95,94 @@ class HTTPRequest(looping.BaseIOEventHandler):
                 continue
             elif not isinstance(auth_result, HTTPResponse):
                 # Wrong response from auth handler
-                raise RuntimeError('Wrong response from authorization handler %s' % auth_handler)
+                raise RuntimeError("Wrong response from authorization handler %s" % auth_handler)
             elif auth_result.status == 200:
                 # Request authorized
                 break
             else:
                 # Access denied
-                loop.register(helpers.HTTPEventHandler(self.server,
-                                                       self.sock,
-                                                       self.address,
-                                                       self.request_parser,
-                                                       auth_result),
-                              looping.POLLOUT)
+                loop.register(
+                    helpers.HTTPEventHandler(self.server, self.sock, self.address, self.request_parser, auth_result),
+                    looping.POLLOUT,
+                )
                 return
 
         path = self.request_parser.request_path.decode("ascii")
 
         response = None
 
-        if self.request_parser.request_method in [b'PUT', b'SOURCE', b'POST']:
-            self.server.register_source(sources.find_source(
-                self.server, self.sock, self.address, self.request_parser, path))
-        elif self.request_parser.request_method in [b'GET', b'HEAD']:
+        if self.request_parser.request_method in [b"PUT", b"SOURCE", b"POST"]:
+            self.server.register_source(
+                sources.find_source(self.server, self.sock, self.address, self.request_parser, path)
+            )
+        elif self.request_parser.request_method in [b"GET", b"HEAD"]:
             # New client
 
             # Is our client asking for status ?
             if path in self.server.status_handlers:
                 # FIXME: should we handle HEAD requests ?
-                if self.request_parser.request_method not in [b'GET']:
-                    response = HTTPResponse(405, b'Method Not Allowed')
+                if self.request_parser.request_method not in [b"GET"]:
+                    response = HTTPResponse(405, b"Method Not Allowed")
                 else:
-                    loop.register(self.server.status_handlers[path].get_status(self.sock,
-                                                                               self.address,
-                                                                               self.request_parser),
-                                  looping.POLLOUT)
+                    loop.register(
+                        self.server.status_handlers[path].get_status(self.sock, self.address, self.request_parser),
+                        looping.POLLOUT,
+                    )
             else:
                 # New client for one of our sources
                 if path in self.server.sources:
                     # Used by some clients to know the stream type
                     # before attempting playout
-                    if self.request_parser.request_method in [b'HEAD']:
+                    if self.request_parser.request_method in [b"HEAD"]:
                         source = list(self.server.sources[path].keys())[0]
-                        response = HTTPResponse(200, b'OK', {b'Content-Type': bytes(source.content_type, "ascii"),
-                                                            b'Content-Length': None,
-                                                            b'Connection': b'close'})
+                        response = HTTPResponse(
+                            200,
+                            b"OK",
+                            {
+                                b"Content-Type": bytes(source.content_type, "ascii"),
+                                b"Content-Length": None,
+                                b"Connection": b"close",
+                            },
+                        )
                     # Check for server clients limit
                     elif self.server.clients_limit is not None and (
-                        self.server.clients_limit == self.server.clients_connected):
-                        response = HTTPResponse(503, b'Cannot handle response.'
-                                                b' Too many clients.')
+                        self.server.clients_limit == self.server.clients_connected
+                    ):
+                        response = HTTPResponse(503, b"Cannot handle response." b" Too many clients.")
                     else:
                         # FIXME: proper source selection
                         source = random.choice(list(self.server.sources[path].keys()))
-                        new_client = clients.find_client(self.server,
-                                                         source,
-                                                         self.sock,
-                                                         self.address,
-                                                         self.request_parser)
+                        new_client = clients.find_client(
+                            self.server, source, self.sock, self.address, self.request_parser
+                        )
                         # FIXME: this call may actually need to instatiate
                         # the client itself (e.g. if the source needs some
                         # dedicated code in its clients)
                         source.new_client(new_client)
                         # FIXME: see above wrt to proper source selection
-                        self.server.sources[path][source]['clients'][new_client.fileno()] = new_client
+                        self.server.sources[path][source]["clients"][new_client.fileno()] = new_client
                         self.server.clients_connected += 1
-                        loop.register(new_client,
-                                      looping.POLLOUT)
+                        loop.register(new_client, looping.POLLOUT)
                 else:
                     # Stream does not exist
-                    response = HTTPResponse(404, b'Stream Not Found')
+                    response = HTTPResponse(404, b"Stream Not Found")
 
         else:
             # Unknown HTTP request method
-            response = HTTPResponse(405, b'Method Not Allowed')
+            response = HTTPResponse(405, b"Method Not Allowed")
 
         if response is not None:
-            loop.register(helpers.HTTPEventHandler(self.server,
-                                                   self.sock,
-                                                   self.address,
-                                                   self.request_parser,
-                                                   response),
-                          looping.POLLOUT)
+            loop.register(
+                helpers.HTTPEventHandler(self.server, self.sock, self.address, self.request_parser, response),
+                looping.POLLOUT,
+            )
 
 
 class InactivityTimeout(Exception):
     pass
 
 
-_SourceDict = TypedDict("_SourceDict", {"source": sources.StreamSource,
-                                        "clients": dict[int, clients.StreamClient]})
+_SourceDict = TypedDict("_SourceDict", {"source": sources.StreamSource, "clients": dict[int, clients.StreamClient]})
 
 
 class TCPServer(looping.BaseIOEventHandler):
@@ -199,9 +196,9 @@ class TCPServer(looping.BaseIOEventHandler):
 
     RESTART_DELAY = 1
 
-    STATE_RUNNING = 'RUNNING'
-    STATE_STOPPED = 'STOPPED'
-    STATE_SHUTTING_DOWN = 'SHUTTING_DOWN'
+    STATE_RUNNING = "RUNNING"
+    STATE_STOPPED = "STOPPED"
+    STATE_SHUTTING_DOWN = "SHUTTING_DOWN"
 
     timeouts: timeouts.Timeouts
 
@@ -210,7 +207,7 @@ class TCPServer(looping.BaseIOEventHandler):
         self.config_file = config_file
         with open(self.config_file) as conf_file:
             self.config = configuration.ServerConfiguration(self, json.load(conf_file))
-        self.logger = logger or logging.getLogger('savate')
+        self.logger = logger or logging.getLogger("savate")
         self.keepalived: dict[bytes, list[clients.StreamClient]] = collections.defaultdict(list)
         self.sources: dict[str, dict[sources.StreamSource, _SourceDict]] = {}
         self.relays: dict[socket.socket, relay.Relay] = {}
@@ -253,7 +250,7 @@ class TCPServer(looping.BaseIOEventHandler):
             except IOError as exc:
                 if exc.errno in (errno.EMFILE, errno.ENFILE):
                     # Too many open files
-                    self.logger.error('Cannot accept, too many open files')
+                    self.logger.error("Cannot accept, too many open files")
                     # Shutdown the socket to try an clear the backlog,
                     # which should disconnect the client; then
                     # re-listen() on it immediately
@@ -273,8 +270,7 @@ class TCPServer(looping.BaseIOEventHandler):
 
     def handle_new_incoming(self) -> None:
         client_socket, client_address = self.sock.accept()
-        self.logger.info('New client <fd:%d, id:0x%s>, %s',
-                         client_socket.fileno(), id(client_socket), client_address)
+        self.logger.info("New client <fd:%d, id:0x%s>, %s", client_socket.fileno(), id(client_socket), client_address)
         new_handler = HTTPRequest(self, client_socket, client_address)
         self.reset_inactivity_timeout(new_handler)
 
@@ -287,21 +283,32 @@ class TCPServer(looping.BaseIOEventHandler):
         for stat in self.statistics_handlers:
             stat.request_in(request_parser, sock)
 
-    def request_out(self, request_parser: cyhttp11.HTTPParser, sock: socket.socket, address: tuple[str, int], size: int = 0, duration: float = 0,
-                    status_code: int = 200) -> None:
+    def request_out(
+        self,
+        request_parser: cyhttp11.HTTPParser,
+        sock: socket.socket,
+        address: tuple[str, int],
+        size: int = 0,
+        duration: float = 0,
+        status_code: int = 200,
+    ) -> None:
         for stat in self.statistics_handlers:
-            stat.request_out(request_parser, sock, address, size, duration,
-                             status_code)
+            stat.request_out(request_parser, sock, address, size, duration, status_code)
 
-    def add_relay(self, url: str, path: str, address_info: Optional[helpers.AddrInfo] = None, burst_size: Optional[int] = None,
-                  on_demand: bool = False, keepalive: Optional[int] = None) -> None:
+    def add_relay(
+        self,
+        url: str,
+        path: str,
+        address_info: Optional[helpers.AddrInfo] = None,
+        burst_size: Optional[int] = None,
+        on_demand: bool = False,
+        keepalive: Optional[int] = None,
+    ) -> None:
         tmp_relay: relay.Relay
-        if urllib.parse.urlparse(url).scheme in ('udp', 'multicast'):
-            tmp_relay = relay.UDPRelay(self, url, path, address_info,
-                                       burst_size)
+        if urllib.parse.urlparse(url).scheme in ("udp", "multicast"):
+            tmp_relay = relay.UDPRelay(self, url, path, address_info, burst_size)
         else:
-            tmp_relay = relay.HTTPRelay(self, url, path, address_info,
-                                        burst_size, on_demand, keepalive)
+            tmp_relay = relay.HTTPRelay(self, url, path, address_info, burst_size, on_demand, keepalive)
         self.relays[tmp_relay.sock] = tmp_relay
 
     def add_auth_handler(self, handler: AbstractAuthorization) -> None:
@@ -313,18 +320,21 @@ class TCPServer(looping.BaseIOEventHandler):
     def add_stats_handler(self, handler: stats.StatsHandler) -> None:
         self.statistics_handlers.append(handler)
 
-    def add_source(self, path: str, sock: socket.socket, address: tuple[str, int], request_parser: cyhttp11.HTTPParser,
-                   burst_size: Optional[int] = None) -> None:
+    def add_source(
+        self,
+        path: str,
+        sock: socket.socket,
+        address: tuple[str, int],
+        request_parser: cyhttp11.HTTPParser,
+        burst_size: Optional[int] = None,
+    ) -> None:
 
-        source = sources.find_source(self, sock, address, request_parser, path,
-                                     burst_size)
+        source = sources.find_source(self, sock, address, request_parser, path, burst_size)
         self.register_source(source)
 
     def register_source(self, source: sources.StreamSource) -> None:
-        self.logger.info('New source (%s) for %s: %s',
-                         source.__class__.__name__, source.path, source.address)
-        self.sources.setdefault(source.path, {})[source] = {'source': source,
-                                                            'clients': {}}
+        self.logger.info("New source (%s) for %s: %s", source.__class__.__name__, source.path, source.address)
+        self.sources.setdefault(source.path, {})[source] = {"source": source, "clients": {}}
         self.reset_inactivity_timeout(source)
         self.loop.register(source, looping.POLLIN)
 
@@ -337,7 +347,7 @@ class TCPServer(looping.BaseIOEventHandler):
                     # the client disconnected so we just ignore it
                     continue
                 client.source = source
-                self.sources[source.path][source]['clients'][client.fileno()] = client
+                self.sources[source.path][source]["clients"][client.fileno()] = client
 
             del self.keepalived[source.path]
 
@@ -349,8 +359,7 @@ class TCPServer(looping.BaseIOEventHandler):
         if handler.sock in self.relays:
             # It will be restarted in one second from now
             # FIXME: use real timers
-            self.relays_to_restart.append((self.loop.now() + self.RESTART_DELAY,
-                                           self.relays.pop(handler.sock)))
+            self.relays_to_restart.append((self.loop.now() + self.RESTART_DELAY, self.relays.pop(handler.sock)))
 
     def remove_source(self, source: sources.StreamSource) -> None:
         # De-activate the timeout handling for this source
@@ -366,14 +375,15 @@ class TCPServer(looping.BaseIOEventHandler):
             # migrate the clients to it
             tmp_source = self.sources[source.path].pop(source)
             # Simple even distribution amongst the remaining sources
-            for client, new_source in zip(iter(tmp_source['clients'].values()),
-                                                     itertools.cycle(list(self.sources[source.path].keys()))):
+            for client, new_source in zip(
+                iter(tmp_source["clients"].values()), itertools.cycle(list(self.sources[source.path].keys()))
+            ):
                 client.source = new_source
-                self.sources[source.path][new_source]['clients'][client.fileno()] = client
+                self.sources[source.path][new_source]["clients"][client.fileno()] = client
                 # if source is on demand and not running, then start it
                 new_source.on_demand_activate()
         else:
-            for client in self.sources[source.path][source]['clients'].values():
+            for client in self.sources[source.path][source]["clients"].values():
                 if keepalive:
                     # try to keep the clients
                     client.source = None  # type: ignore[assignment]
@@ -388,7 +398,7 @@ class TCPServer(looping.BaseIOEventHandler):
                 # timeout n seconds
                 def my_closure() -> None:
                     # close clients
-                    self.logger.error('Keepalive client trashed')
+                    self.logger.error("Keepalive client trashed")
                     for client in self.keepalived[source.path]:
                         # in case client was disconnected already
                         if not client.closed:
@@ -411,37 +421,39 @@ class TCPServer(looping.BaseIOEventHandler):
         if source is None:
             return None
 
-        del self.sources[source.path][source]['clients'][client.fileno()]
+        del self.sources[source.path][source]["clients"][client.fileno()]
         # FIXME: what to do with this one ?
         self.logger.info(
-            'Dropping client for path %s, %s',
+            "Dropping client for path %s, %s",
             source.path,
             client.address,
         )
 
     def all_clients(self) -> Iterable[clients.StreamClient]:
-        return itertools.chain.from_iterable(source_dict['clients'].values()
-                                             for source in self.sources.values()
-                                             for source_dict in source.values()
-                                             )
+        return itertools.chain.from_iterable(
+            source_dict["clients"].values() for source in self.sources.values() for source_dict in source.values()
+        )
 
     def publish_packet(self, source: sources.StreamSource, packet: bytes) -> None:
         packet = memoryview(packet)
-        for client in self.sources[source.path][source]['clients'].values():
+        for client in self.sources[source.path][source]["clients"].values():
             client.add_packet(packet)
 
     def serve_forever(self) -> None:
-        while (self.state == self.STATE_RUNNING or
-               (self.state == self.STATE_SHUTTING_DOWN and any(self.all_clients()))):
+        while self.state == self.STATE_RUNNING or (self.state == self.STATE_SHUTTING_DOWN and any(self.all_clients())):
             self.loop.once(self.LOOP_TIMEOUT)
 
-            while (self.relays_to_restart and
-                   self.relays_to_restart[0][0] < self.loop.now()):
-                self.logger.info('Restarting relay %s', self.relays_to_restart[0][1])
+            while self.relays_to_restart and self.relays_to_restart[0][0] < self.loop.now():
+                self.logger.info("Restarting relay %s", self.relays_to_restart[0][1])
                 tmp_relay = self.relays_to_restart.popleft()[1]
-                self.add_relay(tmp_relay.url, tmp_relay.path,
-                               tmp_relay.addr_info, tmp_relay.burst_size,
-                               tmp_relay.on_demand, tmp_relay.keepalive)
+                self.add_relay(
+                    tmp_relay.url,
+                    tmp_relay.path,
+                    tmp_relay.addr_info,
+                    tmp_relay.burst_size,
+                    tmp_relay.on_demand,
+                    tmp_relay.keepalive,
+                )
 
             if self.reloading:
                 self.reloading = False
@@ -450,22 +462,22 @@ class TCPServer(looping.BaseIOEventHandler):
                         config_dict = json.load(conf_file)
                         self.config.reconfigure(config_dict)
                     except (ValueError, configuration.BadConfig):
-                        self.logger.exception('Bad config file:')
+                        self.logger.exception("Bad config file:")
 
         # FIXME: we should probably close() every source/client and
         # the server instance itself
-        self.logger.info('Shutting down')
+        self.logger.info("Shutting down")
 
     def stop(self, signum: int, _frame: Optional[types.FrameType]) -> None:
-        self.logger.info('Received signal %s, stopping main loop', find_signal_str(signum))
+        self.logger.info("Received signal %s, stopping main loop", find_signal_str(signum))
         self.state = self.STATE_STOPPED
 
     def reload(self, signum: int, _frame: Optional[types.FrameType]) -> None:
-        self.logger.info('Received signal %s, reloading configuration', find_signal_str(signum))
+        self.logger.info("Received signal %s, reloading configuration", find_signal_str(signum))
         self.reloading = True
 
     def graceful_stop(self, signum: int, _frame: Optional[types.FrameType]) -> None:
-        self.logger.info('Received signal %s, performing graceful stop', find_signal_str(signum))
+        self.logger.info("Received signal %s, performing graceful stop", find_signal_str(signum))
         # Close our accept() socket
         self.loop.unregister(self)
         self.close()

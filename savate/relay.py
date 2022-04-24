@@ -12,13 +12,20 @@ from savate import helpers
 from savate.helpers import AddrInfo, HTTPError, HTTPParseError
 from savate.sources import MPEGTSSource
 from savate import buffer_event
+
 if TYPE_CHECKING:
     from savate.server import TCPServer
 
 
 class Relay(looping.BaseIOEventHandler):
-
-    def __init__(self, server: "TCPServer", url: str, path: str, addr_info: Optional[AddrInfo] = None, burst_size: Optional[int] = None) -> None:
+    def __init__(
+        self,
+        server: "TCPServer",
+        url: str,
+        path: str,
+        addr_info: Optional[AddrInfo] = None,
+        burst_size: Optional[int] = None,
+    ) -> None:
         self.server = server
         self.url = url
         self.parsed_url = urllib.parse.urlparse(url)
@@ -41,14 +48,15 @@ class Relay(looping.BaseIOEventHandler):
         looping.BaseIOEventHandler.close(self)
 
     def __str__(self) -> str:
-        return '<%s relaying %s for %s>' % (
+        return "<%s relaying %s for %s>" % (
             self.__class__.__name__,
             self.url,
             self.path,
-            )
+        )
 
     def connect(self) -> None:
         return None
+
     # def handle_event(self, eventmask: int) -> None:
     #     pass
 
@@ -59,7 +67,14 @@ class UDPRelay(Relay):
     # data on our UDP socket (dead source, network issue)
     MIN_START_BUFFER = 64 * 2**10
 
-    def __init__(self, server: "TCPServer", url: str, path: str, addr_info: Optional[AddrInfo] = None, burst_size: Optional[int] = None) -> None:
+    def __init__(
+        self,
+        server: "TCPServer",
+        url: str,
+        path: str,
+        addr_info: Optional[AddrInfo] = None,
+        burst_size: Optional[int] = None,
+    ) -> None:
         super().__init__(server, url, path, addr_info, burst_size)
 
         # UDP, possibly multicast input
@@ -68,11 +83,11 @@ class UDPRelay(Relay):
         self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.sock.bind(self.udp_address)
         self.sock.setblocking(False)
-        if self.parsed_url.scheme == 'multicast':
-            multicast_request = struct.pack('=4sl', socket.inet_aton(self.host_address), socket.INADDR_ANY)
+        if self.parsed_url.scheme == "multicast":
+            multicast_request = struct.pack("=4sl", socket.inet_aton(self.host_address), socket.INADDR_ANY)
             self.sock.setsockopt(socket.SOL_IP, socket.IP_ADD_MEMBERSHIP, multicast_request)
             # The socket is now multicast ready
-        self.initial_buffer_data = b''
+        self.initial_buffer_data = b""
         self.server.loop.register(self, looping.POLLIN)
         self.server.update_activity(self)
 
@@ -81,8 +96,7 @@ class UDPRelay(Relay):
             # FIXME: this is basically a c/c from server.py's
             # HTTPRequest's handle_read
             while True:
-                tmp_buffer = helpers.handle_eagain(self.sock.recv,
-                                                   self.MIN_START_BUFFER)
+                tmp_buffer = helpers.handle_eagain(self.sock.recv, self.MIN_START_BUFFER)
                 if tmp_buffer is None:
                     # EAGAIN, we'll come back later
                     break
@@ -94,20 +108,29 @@ class UDPRelay(Relay):
                     fake_response_parser = cyhttp11.HTTPClientParser()
                     fake_response_parser.body = self.initial_buffer_data
                     # FIXME: we're assuming an MPEG-TS source
-                    fake_response_parser.headers['Content-Type'] = 'video/MP2T'
-                    self.server.add_source(self.path, self.sock, self.udp_address,
-                                           fake_response_parser, self.burst_size)
+                    fake_response_parser.headers["Content-Type"] = "video/MP2T"
+                    self.server.add_source(
+                        self.path, self.sock, self.udp_address, fake_response_parser, self.burst_size
+                    )
                     break
 
 
 class HTTPRelay(Relay):
 
-    REQUEST_METHOD = b'GET'
-    HTTP_VERSION = b'HTTP/1.0'
+    REQUEST_METHOD = b"GET"
+    HTTP_VERSION = b"HTTP/1.0"
     RESPONSE_MAX_SIZE = 4096
 
-    def __init__(self, server: "TCPServer", url: str, path: str, addr_info: Optional[AddrInfo] = None, burst_size: Optional[int] = None,
-                 on_demand: bool = False, keepalive: Optional[int] = None) -> None:
+    def __init__(
+        self,
+        server: "TCPServer",
+        url: str,
+        path: str,
+        addr_info: Optional[AddrInfo] = None,
+        burst_size: Optional[int] = None,
+        on_demand: bool = False,
+        keepalive: Optional[int] = None,
+    ) -> None:
         super().__init__(server, url, path, addr_info, burst_size)
 
         self.on_demand = on_demand
@@ -136,8 +159,7 @@ class HTTPRelay(Relay):
             self.sock = socket.socket()
 
         self.sock.setblocking(False)
-        error = self.sock.connect_ex((self.host_address,
-                                      self.host_port))
+        error = self.sock.connect_ex((self.host_address, self.host_port))
         if error and error != errno.EINPROGRESS:
             raise socket.error(error, errno.errorcode[error])
 
@@ -154,8 +176,7 @@ class HTTPRelay(Relay):
             self.address = self.sock.getpeername()
             # We're connected, prepare to send our request
             _req = self._build_request()
-            self.output_buffer = buffer_event.BufferOutputHandler(self.sock,
-                                                                  (_req,))
+            self.output_buffer = buffer_event.BufferOutputHandler(self.sock, (_req,))
             self.handle_event = self.handle_request  # type: ignore[assignment]
             # Immediately try to send some data
             self.handle_event(eventmask)
@@ -164,22 +185,24 @@ class HTTPRelay(Relay):
 
     def _build_request(self) -> bytes:
         # FIXME: URL encoding for the request path
-        selector = self.parsed_url.path or '/'
+        selector = self.parsed_url.path or "/"
         if self.parsed_url.params:
-            selector = ';'.join([selector, self.parsed_url.params])
+            selector = ";".join([selector, self.parsed_url.params])
         if self.parsed_url.query:
-            selector = '?'.join([selector, self.parsed_url.query])
+            selector = "?".join([selector, self.parsed_url.query])
 
         print(type(self.REQUEST_METHOD), type(selector), type(self.HTTP_VERSION))
-        request_line = b'%s %s %s' % (self.REQUEST_METHOD, bytes(selector, "ascii"),
-                                      self.HTTP_VERSION)
+        request_line = b"%s %s %s" % (self.REQUEST_METHOD, bytes(selector, "ascii"), self.HTTP_VERSION)
         # FIXME: should we send some more headers ?
-        headers_lines = helpers.build_http_headers({
-            b'Host': bytes(self.host_address, "ascii"),
-            b'icy-metadata': b'1',
-        }, b'')
+        headers_lines = helpers.build_http_headers(
+            {
+                b"Host": bytes(self.host_address, "ascii"),
+                b"icy-metadata": b"1",
+            },
+            b"",
+        )
         # FIXME: should we send a body ?
-        return b'\r\n'.join([request_line, headers_lines, b''])
+        return b"\r\n".join([request_line, headers_lines, b""])
 
     def handle_request(self, eventmask: int) -> None:
         if eventmask & looping.POLLOUT:
@@ -187,7 +210,7 @@ class HTTPRelay(Relay):
             if self.output_buffer.empty():
                 # Request sent, switch to HTTP client parsing mode
                 self.server.loop.register(self, looping.POLLIN)
-                self.response_buffer = b''
+                self.response_buffer = b""
                 self.response_size = 0
                 self.response_parser = cyhttp11.HTTPClientParser()
                 self.handle_event = self.handle_response  # type: ignore[assignment]
@@ -197,36 +220,33 @@ class HTTPRelay(Relay):
             # FIXME: this is basically a c/c from server.py's
             # HTTPRequest's handle_read
             while True:
-                tmp_buffer = helpers.handle_eagain(self.sock.recv,
-                                                   self.RESPONSE_MAX_SIZE - self.response_size)
+                tmp_buffer = helpers.handle_eagain(self.sock.recv, self.RESPONSE_MAX_SIZE - self.response_size)
                 if tmp_buffer is None:
                     # EAGAIN, we'll come back later
                     break
-                elif tmp_buffer == b'':
-                    raise HTTPError('Unexpected end of stream from %s, %s' %
-                                    (self.url,
-                                    (self.sock, self.address)))
+                elif tmp_buffer == b"":
+                    raise HTTPError("Unexpected end of stream from %s, %s" % (self.url, (self.sock, self.address)))
                 self.response_buffer = self.response_buffer + tmp_buffer
                 self.response_size += len(tmp_buffer)
                 self.response_parser.execute(self.response_buffer)
                 if self.response_parser.has_error():
-                    raise HTTPParseError('Invalid HTTP response from %s, %s' %
-                                         (self.sock, self.address))
+                    raise HTTPParseError("Invalid HTTP response from %s, %s" % (self.sock, self.address))
                 elif self.response_parser.is_finished():
                     # Transform this into the appropriate handler
                     self.transform_response()
                     break
                 elif self.response_size >= self.RESPONSE_MAX_SIZE:
-                    raise HTTPParseError('Oversized HTTP response from %s, %s' %
-                                         (self.sock, self.address))
+                    raise HTTPParseError("Oversized HTTP response from %s, %s" % (self.sock, self.address))
 
     def transform_response(self) -> None:
         if self.response_parser.status_code not in (200,):
-            self.server.logger.error('Unexpected response %d %s from %s, %s',
-                                     self.response_parser.status_code,
-                                     self.response_parser.reason_phrase,
-                                     self.url,
-                                     (self.sock, self.address))
+            self.server.logger.error(
+                "Unexpected response %d %s from %s, %s",
+                self.response_parser.status_code,
+                self.response_parser.reason_phrase,
+                self.url,
+                (self.sock, self.address),
+            )
             self.close()
             return
 
@@ -236,8 +256,15 @@ class HTTPRelay(Relay):
             return
 
         source = sources.find_source(
-            self.server, self.sock, self.address, self.response_parser,
-            self.path, self.burst_size, self.on_demand, self.keepalive)
+            self.server,
+            self.sock,
+            self.address,
+            self.response_parser,
+            self.path,
+            self.burst_size,
+            self.on_demand,
+            self.keepalive,
+        )
         if self.on_demand:
             self.od_source = source
         self.server.register_source(source)

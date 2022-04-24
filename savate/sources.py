@@ -5,6 +5,7 @@ from cyhttp11 import HTTPParser
 
 from savate import helpers
 from savate import looping
+
 if TYPE_CHECKING:
     from savate.clients import StreamClient
     from savate.server import TCPServer
@@ -27,9 +28,18 @@ class StreamSource(looping.BaseIOEventHandler):
     RUNNING = 3
     CLOSING = 4  # running but about to close
 
-    def __init__(self, server: "TCPServer", sock: socket.socket, address: tuple[str, int], content_type: str,
-                 request_parser: HTTPParser, path: Optional[str] = None, burst_size: Optional[int] = None,
-                 on_demand: bool = False, keepalive: Optional[int] = None) -> None:
+    def __init__(
+        self,
+        server: "TCPServer",
+        sock: socket.socket,
+        address: tuple[str, int],
+        content_type: str,
+        request_parser: HTTPParser,
+        path: Optional[str] = None,
+        burst_size: Optional[int] = None,
+        on_demand: bool = False,
+        keepalive: Optional[int] = None,
+    ) -> None:
         self.server = server
         self.sock = sock
         self.address = address
@@ -62,8 +72,7 @@ class StreamSource(looping.BaseIOEventHandler):
         elif self.on_demand != self.STOPPED:
             return
 
-        self.server.logger.info('Activate ondemand for source %s: %s',
-                                self.path, self.address)
+        self.server.logger.info("Activate ondemand for source %s: %s", self.path, self.address)
         self.on_demand = self.CONNECTING
         del self.server.relays[self.sock]
         self.relay.connect()
@@ -74,8 +83,7 @@ class StreamSource(looping.BaseIOEventHandler):
         subclasses to clear buffers for examples.
 
         """
-        self.server.logger.info('Desactivate ondemand for source %s: %s',
-                                self.path, self.address)
+        self.server.logger.info("Desactivate ondemand for source %s: %s", self.path, self.address)
         self.on_demand = self.STOPPED
         self.server.loop.unregister(self)
         self.server.remove_inactivity_timeout(self)
@@ -89,12 +97,12 @@ class StreamSource(looping.BaseIOEventHandler):
         self.server.loop.register(self, looping.POLLIN)
 
     def __str__(self) -> str:
-        return '<%s for %s, %s, %s>' % (
+        return "<%s for %s, %s, %s>" % (
             self.__class__.__name__,
             self.path,
             self.address,
             self.content_type,
-            )
+        )
 
     def close(self) -> None:
         self.server.remove_source(self)
@@ -114,9 +122,9 @@ class StreamSource(looping.BaseIOEventHandler):
                 if packet is None:
                     # EAGAIN
                     break
-                elif packet == b'':
+                elif packet == b"":
                     # End of stream
-                    self.server.logger.warn('End of stream for %s', self)
+                    self.server.logger.warn("End of stream for %s", self)
                     self.close()
                     # FIXME: publish "EOS" packet
                     break
@@ -128,7 +136,7 @@ class StreamSource(looping.BaseIOEventHandler):
                         # there is still data available.
                         break
         else:
-            self.server.logger.error('%s: unexpected eventmask %s', self, eventmask)
+            self.server.logger.error("%s: unexpected eventmask %s", self, eventmask)
 
     def handle_packet(self, packet: bytes) -> None:
         # By default, we do nothing and directly feed it to
@@ -137,7 +145,7 @@ class StreamSource(looping.BaseIOEventHandler):
         self.publish_packet(packet)
 
     def publish_packet(self, packet: bytes) -> None:
-        clients = self.server.sources[self.path][self]['clients']
+        clients = self.server.sources[self.path][self]["clients"]
 
         if not clients and self.on_demand == self.RUNNING:
             # activate timeout for desactivating source
@@ -171,16 +179,23 @@ class BufferedRawSource(StreamSource):
 
     output_buffer_data: bytes
 
-    def __init__(self, server: "TCPServer", sock: socket.socket, address: tuple[str, int], content_type: str,
-                 request_parser: Optional[HTTPParser] = None, path: Optional[str] = None, burst_size: Optional[int] = None,
-                 on_demand: bool = False, keepalive: Optional[int] = None) -> None:
-        super().__init__(server, sock, address, content_type,
-                       request_parser, path, burst_size, on_demand,
-                       keepalive)
+    def __init__(
+        self,
+        server: "TCPServer",
+        sock: socket.socket,
+        address: tuple[str, int],
+        content_type: str,
+        request_parser: Optional[HTTPParser] = None,
+        path: Optional[str] = None,
+        burst_size: Optional[int] = None,
+        on_demand: bool = False,
+        keepalive: Optional[int] = None,
+    ) -> None:
+        super().__init__(server, sock, address, content_type, request_parser, path, burst_size, on_demand, keepalive)
         if request_parser:
             self.output_buffer_data = request_parser.body
         else:
-            self.output_buffer_data = b''
+            self.output_buffer_data = b""
         if self.burst_size is None:
             self.burst_size = self.BURST_SIZE
         self.burst_packets = helpers.BurstQueue(self.burst_size)
@@ -190,10 +205,10 @@ class BufferedRawSource(StreamSource):
         if len(self.output_buffer_data) >= self.TEMP_BUFFER_SIZE:
             self.publish_packet(self.output_buffer_data)
             self.burst_packets.append(self.output_buffer_data)
-            self.output_buffer_data = b''
+            self.output_buffer_data = b""
 
     def on_demand_deactivate(self) -> None:
-        self.output_buffer_data = b''
+        self.output_buffer_data = b""
         self.burst_packets.clear()
         StreamSource.on_demand_deactivate(self)
 
@@ -220,14 +235,13 @@ class FixedPacketSizeSource(BufferedRawSource):
     def handle_packet(self, packet: bytes) -> None:
         self.output_buffer_data = self.output_buffer_data + packet
         if len(self.output_buffer_data) >= self.TEMP_BUFFER_SIZE:
-            nb_packets, remaining_bytes = divmod(len(self.output_buffer_data),
-                                                 self.PACKET_SIZE)
+            nb_packets, remaining_bytes = divmod(len(self.output_buffer_data), self.PACKET_SIZE)
             if remaining_bytes:
-                tmp_data = self.output_buffer_data[:(nb_packets * self.PACKET_SIZE)]
+                tmp_data = self.output_buffer_data[: (nb_packets * self.PACKET_SIZE)]
                 self.output_buffer_data = self.output_buffer_data[-remaining_bytes:]
             else:
                 tmp_data = self.output_buffer_data
-                self.output_buffer_data = b''
+                self.output_buffer_data = b""
             self.publish_packet(tmp_data)
             self.burst_packets.append(tmp_data)
 
@@ -274,12 +288,21 @@ try:
         RECV_BUFFER_COUNT_MIN = 1
         RECV_BUFFER_COUNT_MAX = 512
 
-        def __init__(self, server: "TCPServer", sock: socket.socket, address: tuple[str, int], content_type: str,
-                 request_parser: Optional[HTTPParser] = None, path: Optional[str] = None, burst_size: Optional[int] = None,
-                 on_demand: bool = False, keepalive: Optional[int] = None) -> None:
-            super().__init__(server, sock, address,
-                                               content_type, request_parser,
-                                               path, burst_size, on_demand, keepalive)
+        def __init__(
+            self,
+            server: "TCPServer",
+            sock: socket.socket,
+            address: tuple[str, int],
+            content_type: str,
+            request_parser: Optional[HTTPParser] = None,
+            path: Optional[str] = None,
+            burst_size: Optional[int] = None,
+            on_demand: bool = False,
+            keepalive: Optional[int] = None,
+        ) -> None:
+            super().__init__(
+                server, sock, address, content_type, request_parser, path, burst_size, on_demand, keepalive
+            )
             self.recv_buffer_count = self.RECV_BUFFER_COUNT_MIN
 
         def recv_packet(self, buffer_size: int = -1) -> Optional[bytes]:
@@ -289,7 +312,7 @@ try:
             if buffers is None:
                 return None
             if not buffers:
-                return b''
+                return b""
             # Automagically grow/shrink the buffer count as needed
             if len(buffers) >= self.recv_buffer_count:
                 self.recv_buffer_count = min(self.recv_buffer_count * 2, self.RECV_BUFFER_COUNT_MAX)
@@ -297,8 +320,7 @@ try:
                 self.recv_buffer_count = max(len(buffers), self.RECV_BUFFER_COUNT_MIN)
 
             self.server.update_activity(self)
-            return b''.join(buffers)
-
+            return b"".join(buffers)
 
 except ImportError:
     # recvmmsg() is not available, we'll use regular recv() instead
@@ -307,37 +329,44 @@ except ImportError:
 
 from savate.flv_source import FLVSource
 from savate.shoutcast_source import (
-    ShoutcastSource, MP3ShoutcastSource, ADTSShoutcastSource,
+    ShoutcastSource,
+    MP3ShoutcastSource,
+    ADTSShoutcastSource,
 )
 
 sources_mapping: dict[str, Type[StreamSource]] = {
-    'video/x-flv': FLVSource,
-    'application/x-flv': FLVSource,
-    'audio/mpeg': MP3ShoutcastSource,
-    'audio/mp3': MP3ShoutcastSource,
-    'audio/aacp': ADTSShoutcastSource,
-    'audio/aac': ADTSShoutcastSource,
-    'application/octet-stream': BufferedRawSource,
-    'video/MP2T': MPEGTSSource,
-    'video/mpeg': MPEGTSSource,
-    }
+    "video/x-flv": FLVSource,
+    "application/x-flv": FLVSource,
+    "audio/mpeg": MP3ShoutcastSource,
+    "audio/mp3": MP3ShoutcastSource,
+    "audio/aacp": ADTSShoutcastSource,
+    "audio/aac": ADTSShoutcastSource,
+    "application/octet-stream": BufferedRawSource,
+    "video/MP2T": MPEGTSSource,
+    "video/mpeg": MPEGTSSource,
+}
 
 
-def find_source(server: "TCPServer", sock: socket.socket, address: tuple[str, int],
-                 request_parser: HTTPParser, path: Optional[str] = None, burst_size: Optional[int] = None,
-                 on_demand: bool = False, keepalive: Optional[int] = None) -> StreamSource:
+def find_source(
+    server: "TCPServer",
+    sock: socket.socket,
+    address: tuple[str, int],
+    request_parser: HTTPParser,
+    path: Optional[str] = None,
+    burst_size: Optional[int] = None,
+    on_demand: bool = False,
+    keepalive: Optional[int] = None,
+) -> StreamSource:
     """Return a :class:`StreamSource` instance."""
 
-    content_type = request_parser.headers.get(b'Content-Type',
-                                              b'application/octet-stream').decode("ascii")
+    content_type = request_parser.headers.get(b"Content-Type", b"application/octet-stream").decode("ascii")
     if content_type in sources_mapping:
         stream_source = sources_mapping[content_type]
     else:
         server.logger.warning(
-            'No registered source handler for %s, using generic handler',
+            "No registered source handler for %s, using generic handler",
             content_type,
         )
         stream_source = BufferedRawSource
 
-    return stream_source(server, sock, address, content_type, request_parser,
-                         path, burst_size, on_demand, keepalive)
+    return stream_source(server, sock, address, content_type, request_parser, path, burst_size, on_demand, keepalive)

@@ -48,6 +48,5 @@ class BufferOutputHandler:
             else:
                 raise
         if self.queue_size() > self.MAX_QUEUE_SIZE:
-            raise QueueSizeExceeded('%d > %d' %
-                                    (self.queue_size(), self.MAX_QUEUE_SIZE))
+            raise QueueSizeExceeded("%d > %d" % (self.queue_size(), self.MAX_QUEUE_SIZE))
         return total_sent_bytes

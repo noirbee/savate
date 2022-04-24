@@ -10,7 +10,7 @@ if TYPE_CHECKING:
     from savate.server import TCPServer
 
 
-SIZE_REGEXP = re.compile(r'^\d+k?$')
+SIZE_REGEXP = re.compile(r"^\d+k?$")
 
 
 class BadConfig(Exception):
@@ -25,21 +25,20 @@ def convert_burst_size(size: Optional[Union[int, str]]) -> Optional[int]:
         if size >= 0:
             return size
         else:
-            raise BadConfig('Burst size must be a positive int.')
+            raise BadConfig("Burst size must be a positive int.")
 
     size_str = str(size)
     if SIZE_REGEXP.match(size_str):
-        size = int(size_str.replace('k', ''))
-        if 'k' in size_str:
-            size *= 2 ** 10
+        size = int(size_str.replace("k", ""))
+        if "k" in size_str:
+            size *= 2**10
 
         return size
 
-    raise BadConfig('Bad format for burst size.')
+    raise BadConfig("Bad format for burst size.")
 
 
 class ServerConfiguration:
-
     def __init__(self, server: "TCPServer", config_dict: dict[str, Any]):
         self.server = server
         self.config_dict = config_dict
@@ -59,10 +58,10 @@ class ServerConfiguration:
     def reconfigure(self, config_dict: dict[str, Any]) -> None:
         self.config_dict = config_dict
         # authorization, status and statistics handlers may have a close method
-        for handler in itertools.chain(self.server.auth_handlers,
-                                       self.server.status_handlers,
-                                       self.server.statistics_handlers):
-            if callable(getattr(handler, 'close', None)): 
+        for handler in itertools.chain(
+            self.server.auth_handlers, self.server.status_handlers, self.server.statistics_handlers
+        ):
+            if callable(getattr(handler, "close", None)):
                 handler.close()  # type: ignore[attr-defined]
         # make sure modules will be reloaded
         for module_name in self.modules_loaded:
@@ -85,24 +84,31 @@ class ServerConfiguration:
         # use a dict to index all relays configurations
         # values are tuples ( burstsizes or None, keepalive or None)
         # if a relay is represented in the index, it means it exists
-        relay_index = dict((
-            (url, mount['path']),
+        relay_index = dict(
             (
-                convert_burst_size(
-                    mount.get(
-                        'burst_size',
-                        self.config_dict.get('burst_size'),
+                (url, mount["path"]),
+                (
+                    convert_burst_size(
+                        mount.get(
+                            "burst_size",
+                            self.config_dict.get("burst_size"),
+                        ),
                     ),
+                    mount.get("keepalive", self.config_dict.get("keepalive")),
                 ),
-                mount.get('keepalive', self.config_dict.get('keepalive')),
-            ),
-        ) for mount in self.config_dict.get(
-            'mounts', []) for url in mount.get('source_urls', []))
+            )
+            for mount in self.config_dict.get("mounts", [])
+            for url in mount.get("source_urls", [])
+        )
         # source index same as relays but with source instances as values
-        source_index = dict((
-            source.sock,
-            source,
-        ) for sources in self.server.sources.values() for source in sources)
+        source_index = dict(
+            (
+                source.sock,
+                source,
+            )
+            for sources in self.server.sources.values()
+            for source in sources
+        )
 
         for relay in list(tmp_relays.values()):
             relay_params = relay_index.get((relay.url, relay.path), None)
@@ -126,9 +132,9 @@ class ServerConfiguration:
             else:
                 source = source_index.get(relay.sock)
                 if source is not None:
-                    self.server.logger.info('Dropping source %s since it has '
-                                            'been removed from configuration',
-                                            source)
+                    self.server.logger.info(
+                        "Dropping source %s since it has " "been removed from configuration", source
+                    )
                     source.close()
                 else:
                     # This relay has not been yet added as a source
@@ -149,70 +155,73 @@ class ServerConfiguration:
     def configure_relays(self) -> None:
         conf = self.config_dict
         server = self.server
-        global_burst_size = conf.get('burst_size', None)
-        global_on_demand = conf.get('on_demand', False)
-        global_keepalive = conf.get('keepalive', False)
+        global_burst_size = conf.get("burst_size", None)
+        global_on_demand = conf.get("on_demand", False)
+        global_keepalive = conf.get("keepalive", False)
 
-        net_resolve_all = conf.get('net_resolve_all', False)
-
+        net_resolve_all = conf.get("net_resolve_all", False)
 
         # index
-        relay_index = dict((
-            (relay.url, relay.path, relay.addr_info),
-            relay,
-        ) for relay in itertools.chain(
-            iter(self.server.relays.values()),
-            (relay for timeout, relay in self.server.relays_to_restart),
-        ))
+        relay_index = dict(
+            (
+                (relay.url, relay.path, relay.addr_info),
+                relay,
+            )
+            for relay in itertools.chain(
+                iter(self.server.relays.values()),
+                (relay for timeout, relay in self.server.relays_to_restart),
+            )
+        )
 
-        for mount_conf in conf.get('mounts', {}):
-            if 'source_urls' not in mount_conf:
+        for mount_conf in conf.get("mounts", {}):
+            if "source_urls" not in mount_conf:
                 continue
 
-            mount_burst_size = convert_burst_size(
-                mount_conf.get('burst_size', global_burst_size))
-            mount_on_demand = mount_conf.get('on_demand', global_on_demand)
-            mount_keep_alive = mount_conf.get('keepalive', global_keepalive)
-            path = mount_conf['path']
-            for source_url in mount_conf['source_urls']:
+            mount_burst_size = convert_burst_size(mount_conf.get("burst_size", global_burst_size))
+            mount_on_demand = mount_conf.get("on_demand", global_on_demand)
+            mount_keep_alive = mount_conf.get("keepalive", global_keepalive)
+            path = mount_conf["path"]
+            for source_url in mount_conf["source_urls"]:
                 parsed_url = urllib.parse.urlparse(source_url)
-                if parsed_url.scheme in ('udp', 'multicast'):
+                if parsed_url.scheme in ("udp", "multicast"):
                     if (source_url, path, None) not in relay_index:
-                        server.logger.info('Trying to relay %s', source_url)
-                        server.add_relay(source_url, path,
-                                         burst_size=mount_burst_size)
+                        server.logger.info("Trying to relay %s", source_url)
+                        server.add_relay(source_url, path, burst_size=mount_burst_size)
                 else:
-                    if mount_conf.get('net_resolve_all', net_resolve_all):
+                    if mount_conf.get("net_resolve_all", net_resolve_all):
                         for address_info in socket.getaddrinfo(
                             parsed_url.hostname,
                             parsed_url.port,
                             socket.AF_UNSPEC,
                             socket.SOCK_STREAM,
-                            socket.IPPROTO_TCP):
-                            if (source_url, path,
-                                address_info) not in relay_index:
-                                server.logger.info('Trying to relay %s from %s:%s', source_url,
-                                            address_info[4][0], address_info[4][1])
-                                server.add_relay(source_url, path, address_info,
-                                                 mount_burst_size,
-                                                 mount_on_demand,
-                                                 mount_keep_alive)
+                            socket.IPPROTO_TCP,
+                        ):
+                            if (source_url, path, address_info) not in relay_index:
+                                server.logger.info(
+                                    "Trying to relay %s from %s:%s", source_url, address_info[4][0], address_info[4][1]
+                                )
+                                server.add_relay(
+                                    source_url, path, address_info, mount_burst_size, mount_on_demand, mount_keep_alive
+                                )
                     else:
                         if (source_url, path, None) not in relay_index:
-                            server.logger.info('Trying to relay %s', source_url)
-                            server.add_relay(source_url, path,
-                                             burst_size=mount_burst_size,
-                                             on_demand=mount_on_demand,
-                                             keepalive=mount_keep_alive)
+                            server.logger.info("Trying to relay %s", source_url)
+                            server.add_relay(
+                                source_url,
+                                path,
+                                burst_size=mount_burst_size,
+                                on_demand=mount_on_demand,
+                                keepalive=mount_keep_alive,
+                            )
 
     def configure_authorization(self) -> None:
         conf = self.config_dict
         server = self.server
-        for auth_handler in conf.get('auth', []):
-            handler_name = auth_handler['handler']
-            handler_module, handler_class = handler_name.rsplit('.', 1)
+        for auth_handler in conf.get("auth", []):
+            handler_name = auth_handler["handler"]
+            handler_module, handler_class = handler_name.rsplit(".", 1)
             self.modules_loaded.add(handler_module)
-            handler_module = __import__(handler_module, {}, {}, [''])
+            handler_module = __import__(handler_module, {}, {}, [""])
             handler_class = getattr(handler_module, handler_class)
             handler_instance = handler_class(server, conf, **auth_handler)
             server.add_auth_handler(handler_instance)
@@ -220,11 +229,11 @@ class ServerConfiguration:
     def configure_status(self) -> None:
         conf = self.config_dict
         server = self.server
-        for handler_path, status_handler in list(conf.get('status', {}).items()):
-            handler_name = status_handler['handler']
-            handler_module, handler_class = handler_name.rsplit('.', 1)
+        for handler_path, status_handler in list(conf.get("status", {}).items()):
+            handler_name = status_handler["handler"]
+            handler_module, handler_class = handler_name.rsplit(".", 1)
             self.modules_loaded.add(handler_module)
-            handler_module = __import__(handler_module, {}, {}, [''])
+            handler_module = __import__(handler_module, {}, {}, [""])
             handler_class = getattr(handler_module, handler_class)
             handler_instance = handler_class(server, conf, **status_handler)
             server.add_status_handler(handler_path, handler_instance)
@@ -232,11 +241,11 @@ class ServerConfiguration:
     def configure_stats(self) -> None:
         conf = self.config_dict
         server = self.server
-        for stat_handler in conf.get('statistics', {}):
-            handler_name = stat_handler['handler']
-            handler_module, handler_class = handler_name.rsplit('.', 1)
+        for stat_handler in conf.get("statistics", {}):
+            handler_name = stat_handler["handler"]
+            handler_module, handler_class = handler_name.rsplit(".", 1)
             self.modules_loaded.add(handler_module)
-            handler_module = __import__(handler_module, {}, {}, [''])
+            handler_module = __import__(handler_module, {}, {}, [""])
             handler_class = getattr(handler_module, handler_class)
             handler_instance = handler_class(server, **stat_handler)
             self.server.add_stats_handler(handler_instance)
@@ -244,7 +253,7 @@ class ServerConfiguration:
     def configure_limits(self) -> None:
         # set limits for maximum simultaneous clients
         try:
-            self.server.clients_limit = int(self.config_dict.get('clients_limit'))  # type: ignore[arg-type]
-            self.server.logger.info('Set client limit to %d', self.server.clients_limit)
+            self.server.clients_limit = int(self.config_dict.get("clients_limit"))  # type: ignore[arg-type]
+            self.server.logger.info("Set client limit to %d", self.server.clients_limit)
         except (ValueError, TypeError):
             self.server.clients_limit = None

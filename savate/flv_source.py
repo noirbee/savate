@@ -7,6 +7,7 @@ from cyhttp11 import HTTPParser
 
 from savate.sources import StreamSource
 from savate.flv import FLVHeader, FLVTag, FLVAudioData, FLVVideoData
+
 if TYPE_CHECKING:
     from savate.clients import StreamClient
     from savate.server import TCPServer
@@ -17,12 +18,19 @@ class FLVSource(StreamSource):
     # Initial burst duration, in milliseconds
     BURST_DURATION = 5 * 1000
 
-    def __init__(self, server: "TCPServer", sock: socket.socket, address: tuple[str, int], content_type: str,
-                 request_parser: HTTPParser, path: Optional[str] = None, burst_size: Optional[int] = None,
-                 on_demand: bool = False, keepalive: Optional[int] = None) -> None:
-        super().__init__(server, sock, address, content_type,
-                              request_parser, path, burst_size, on_demand,
-                              keepalive)
+    def __init__(
+        self,
+        server: "TCPServer",
+        sock: socket.socket,
+        address: tuple[str, int],
+        content_type: str,
+        request_parser: HTTPParser,
+        path: Optional[str] = None,
+        burst_size: Optional[int] = None,
+        on_demand: bool = False,
+        keepalive: Optional[int] = None,
+    ) -> None:
+        super().__init__(server, sock, address, content_type, request_parser, path, burst_size, on_demand, keepalive)
         # Initial buffer data
         self.buffer_data = request_parser.body
         # The FLV stream header
@@ -50,7 +58,7 @@ class FLVSource(StreamSource):
         self.burst_groups.clear()
         self.burst_groups_data.clear()
         self.handle_data = self.handle_header
-        self.buffer_data = b''
+        self.buffer_data = b""
 
     def on_demand_connected(self, sock: socket.socket, request_parser: HTTPParser) -> None:
         self.buffer_data = request_parser.body
@@ -94,8 +102,7 @@ class FLVSource(StreamSource):
             return False
 
     def handle_tag_body(self) -> bool:
-        body_length = (self.current_tag.data_size +
-                       self.current_tag.TRAILER_SIZE)
+        body_length = self.current_tag.data_size + self.current_tag.TRAILER_SIZE
         if len(self.buffer_data) >= body_length:
             self.current_tag.body = self.buffer_data[:body_length]
 
@@ -114,25 +121,23 @@ class FLVSource(StreamSource):
             return False
 
     def check_for_initial_tag(self, flv_tag: FLVTag) -> bool:
-        if (not self.got_initial_meta and flv_tag.tag_type == 'meta'):
+        if not self.got_initial_meta and flv_tag.tag_type == "meta":
             self.got_initial_meta = True
             self.initial_tags.append(flv_tag)
             return True
 
-        elif (not self.got_initial_audio and flv_tag.tag_type == 'audio'):
+        elif not self.got_initial_audio and flv_tag.tag_type == "audio":
             audio_data = FLVAudioData()
-            audio_data.parse(flv_tag.body[:audio_data.object_size])
-            if (audio_data.sound_format == 'AAC' and
-                audio_data.aac_packet_type == audio_data.AAC_SEQUENCE_HEADER):
+            audio_data.parse(flv_tag.body[: audio_data.object_size])
+            if audio_data.sound_format == "AAC" and audio_data.aac_packet_type == audio_data.AAC_SEQUENCE_HEADER:
                 self.got_initial_audio = True
                 self.initial_tags.append(flv_tag)
                 return True
 
-        elif (not self.got_initial_video and flv_tag.tag_type == 'video'):
+        elif not self.got_initial_video and flv_tag.tag_type == "video":
             video_data = FLVVideoData()
-            video_data.parse(flv_tag.body[:video_data.object_size])
-            if (video_data.codec == 'AVC' and
-                video_data.avc_packet_type == video_data.AVC_SEQUENCE_HEADER):
+            video_data.parse(flv_tag.body[: video_data.object_size])
+            if video_data.codec == "AVC" and video_data.avc_packet_type == video_data.AVC_SEQUENCE_HEADER:
                 self.got_initial_video = True
                 self.initial_tags.append(flv_tag)
                 return True
@@ -143,8 +148,9 @@ class FLVSource(StreamSource):
             # Current packets group is over, publish all of its
             # packets. It seems buffering is needed to avoid a
             # skyrocketing CPU consumption, hence the ''.join()
-            self.publish_packet(b''.join(
-                    itertools.chain.from_iterable((tag.raw_data, tag.body) for tag in self.packets_group)))
+            self.publish_packet(
+                b"".join(itertools.chain.from_iterable((tag.raw_data, tag.body) for tag in self.packets_group))
+            )
             # And add it to the burst packets groups list
             self.add_to_burst_groups(self.packets_group)
             # Reset the current packets group
@@ -152,24 +158,25 @@ class FLVSource(StreamSource):
         self.packets_group.append(flv_tag)
 
     def add_to_burst_groups(self, group: Sequence[FLVTag]) -> None:
-        while ((len(self.burst_groups) >= 2) and
-               ((group[0].timestamp -
-                 self.burst_groups[1][0].timestamp) > self.BURST_DURATION)):
+        while (len(self.burst_groups) >= 2) and (
+            (group[0].timestamp - self.burst_groups[1][0].timestamp) > self.BURST_DURATION
+        ):
             # We try to keep the burst data to at most
             # BURST_DURATION seconds
             self.burst_groups.popleft()
             self.burst_groups_data.popleft()
         self.burst_groups.append(group)
-        self.burst_groups_data.append(b''.join(
-                itertools.chain.from_iterable((tag.raw_data, tag.body) for tag in group)))
+        self.burst_groups_data.append(
+            b"".join(itertools.chain.from_iterable((tag.raw_data, tag.body) for tag in group))
+        )
 
     def is_sync_point(self, flv_tag: FLVTag) -> bool:
         if self.stream_header and self.stream_header.video:
             # If our stream has video, we need to sync on keyframes
-            if (flv_tag.tag_type == 'video'):
+            if flv_tag.tag_type == "video":
                 video_data = FLVVideoData()
-                video_data.parse(flv_tag.body[:video_data.object_size])
-                return (video_data.frame_type == 'keyframe')
+                video_data.parse(flv_tag.body[: video_data.object_size])
+                return video_data.frame_type == "keyframe"
             else:
                 # It's either a non-keyframe video tag or an audio or
                 # metadata tag

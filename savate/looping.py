@@ -46,7 +46,7 @@ class IOLoop:
         self.poller = Poller()
         self.handlers: dict[int, BaseIOEventHandler] = {}
         self.injected_events: dict[int, int] = {}
-        self.logger = logger or logging.getLogger('looping')
+        self.logger = logger or logging.getLogger("looping")
         self._now = time.time()
 
     def register(self, io_event_handler: BaseIOEventHandler, eventmask: int) -> None:
@@ -108,7 +108,7 @@ class IOLoop:
                 handler = self.handlers[fd]
             except KeyError as exc:
                 # There's a bug somewhere. Could be epoll, could be us.
-                self.logger.error('fd %d returned by epoll() is not in self.handlers !', fd)
+                self.logger.error("fd %d returned by epoll() is not in self.handlers !", fd)
                 try:
                     self.poller.unregister(fd)
                 except:
@@ -118,6 +118,6 @@ class IOLoop:
                 handler.handle_event(eventmask)
             except Exception as exc:
                 # We're kinda hardcore
-                self.logger.exception('Exception when handling eventmask %s for fd %s:', eventmask, fd)
+                self.logger.exception("Exception when handling eventmask %s for fd %s:", eventmask, fd)
                 self.unregister(handler)
                 handler.close()

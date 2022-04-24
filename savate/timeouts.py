@@ -5,16 +5,16 @@ from typing import TYPE_CHECKING, Any, Callable
 from savate.helpers import event_mask_str
 from savate.looping import BaseIOEventHandler, POLLIN
 from savate.lllsfd import TimerFD, CLOCK_REALTIME, TFD_TIMER_ABSTIME
+
 if TYPE_CHECKING:
     from savate.server import TCPServer
 
 
 class Timeouts(BaseIOEventHandler):
-
     def __init__(self, server: "TCPServer") -> None:
         BaseIOEventHandler.__init__(self)
         self.server = server
-        self.timer = self.sock = TimerFD(clockid = CLOCK_REALTIME)
+        self.timer = self.sock = TimerFD(clockid=CLOCK_REALTIME)
         # A timestamp -> {handlers: callbacks} dict
         self.timeouts: dict[float, dict[Any, Callable[..., None]]] = {}
         # A handler -> timestamp dict
@@ -24,7 +24,9 @@ class Timeouts(BaseIOEventHandler):
     def min_expiration(self) -> float:
         return min(self.timeouts)
 
-    def reset_timeout(self, key_index: Any, expiration: float, callback: Callable[..., None], *args: Any, **kwargs: Any) -> None:
+    def reset_timeout(
+        self, key_index: Any, expiration: float, callback: Callable[..., None], *args: Any, **kwargs: Any
+    ) -> None:
         """
         :param object key_index: key used in internall dict self.timeouts
         :param numeric expiration: expiration for the given timeout
@@ -34,7 +36,7 @@ class Timeouts(BaseIOEventHandler):
         if (not self.timeouts) or (expiration < self.min_expiration):
             # Specified expiration is earlier that our current one,
             # update our timer
-            self.timer.settime(expiration, flags = TFD_TIMER_ABSTIME)
+            self.timer.settime(expiration, flags=TFD_TIMER_ABSTIME)
 
         # Do we need to update an existing timeout ?
         if key_index in self.handlers_timeouts:
@@ -76,9 +78,9 @@ class Timeouts(BaseIOEventHandler):
             del self.timeouts[expiration]
             if self.timeouts:
                 # Reset the timer to the earliest one
-                self.timer.settime(self.min_expiration, flags = TFD_TIMER_ABSTIME)
+                self.timer.settime(self.min_expiration, flags=TFD_TIMER_ABSTIME)
         else:
-            self.server.logger.error('%s: unexpected eventmask %d (%s)', self, eventmask, event_mask_str(eventmask))
+            self.server.logger.error("%s: unexpected eventmask %d (%s)", self, eventmask, event_mask_str(eventmask))
 
 
 class IOTimeout:
@@ -93,13 +95,11 @@ class IOTimeout:
         self.timeout_handler = timeout_handler
 
     def reset_timeout(self, handler: BaseIOEventHandler, expiration: float) -> None:
-        self.timeout_handler.reset_timeout(handler.sock, expiration,
-                                           self.fired_timeout, handler)
+        self.timeout_handler.reset_timeout(handler.sock, expiration, self.fired_timeout, handler)
 
     def remove_timeout(self, handler: BaseIOEventHandler) -> None:
         self.timeout_handler.remove_timeout(handler.sock)
 
     def fired_timeout(self, handler: BaseIOEventHandler) -> None:
-        self.server.logger.error('Timeout for %s: %d seconds without I/O' %
-                                 (handler, self.server.INACTIVITY_TIMEOUT))
+        self.server.logger.error("Timeout for %s: %d seconds without I/O" % (handler, self.server.INACTIVITY_TIMEOUT))
         handler.close()
