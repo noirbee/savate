@@ -1,5 +1,4 @@
-#! /usr/bin/python
-# -*- coding: utf-8 -*-
+#! /usr/bin/python3
 
 import os
 import optparse
@@ -37,7 +36,7 @@ import signal
 import sys
 from daemon import DaemonContext
 from daemon.daemon import redirect_stream
-from daemon.pidlockfile import TimeoutPIDLockFile
+from daemon.pidfile import TimeoutPIDLockFile
 
 daemon_context = DaemonContext(
     detach_process = options.background,

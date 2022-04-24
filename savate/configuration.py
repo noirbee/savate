@@ -1,11 +1,13 @@
-# -*- coding: utf-8 -*-
-
 import collections
 import itertools
-import urlparse
+import urllib.parse
 import socket
 import sys
 import re
+from typing import TYPE_CHECKING, Any, Optional, Union
+
+if TYPE_CHECKING:
+    from savate.server import TCPServer
 
 
 SIZE_REGEXP = re.compile(r'^\d+k?$')
@@ -15,9 +17,9 @@ class BadConfig(Exception):
     pass
 
 
-def convert_burst_size(size):
+def convert_burst_size(size: Optional[Union[int, str]]) -> Optional[int]:
     if size is None:
-        return
+        return None
 
     if isinstance(size, int):
         if size >= 0:
@@ -36,32 +38,32 @@ def convert_burst_size(size):
     raise BadConfig('Bad format for burst size.')
 
 
-class ServerConfiguration(object):
+class ServerConfiguration:
 
-    def __init__(self, server, config_dict):
+    def __init__(self, server: "TCPServer", config_dict: dict[str, Any]):
         self.server = server
         self.config_dict = config_dict
 
-        self.modules_loaded = set()  # keep trace of the modules we load
+        self.modules_loaded: set[str] = set()  # keep trace of the modules we load
 
-    def __getitem__(self, key):
+    def __getitem__(self, key: str) -> Any:
         return self.config_dict[key]
 
-    def configure(self):
+    def configure(self) -> None:
         self.configure_stats()
         self.configure_authorization()
         self.configure_status()
         self.configure_relays()
         self.configure_limits()
 
-    def reconfigure(self, config_dict):
+    def reconfigure(self, config_dict: dict[str, Any]) -> None:
         self.config_dict = config_dict
         # authorization, status and statistics handlers may have a close method
         for handler in itertools.chain(self.server.auth_handlers,
                                        self.server.status_handlers,
                                        self.server.statistics_handlers):
-            if callable(getattr(handler, 'close', None)):
-                handler.close()
+            if callable(getattr(handler, 'close', None)): 
+                handler.close()  # type: ignore[attr-defined]
         # make sure modules will be reloaded
         for module_name in self.modules_loaded:
             sys.modules.pop(module_name, None)
@@ -100,9 +102,9 @@ class ServerConfiguration(object):
         source_index = dict((
             source.sock,
             source,
-        ) for sources in self.server.sources.itervalues() for source in sources)
+        ) for sources in self.server.sources.values() for source in sources)
 
-        for relay in tmp_relays.values():
+        for relay in list(tmp_relays.values()):
             relay_params = relay_index.get((relay.url, relay.path), None)
             if relay_params is not None:
                 # update relay burst size
@@ -133,10 +135,10 @@ class ServerConfiguration(object):
                     relay.close()
 
         # Any relay marked to be restarted must be checked as well
-        tmp_relays = self.server.relays_to_restart
+        relays_to_restart = self.server.relays_to_restart
         self.server.relays_to_restart = collections.deque()
 
-        for timeout, relay in tmp_relays:
+        for timeout, relay in relays_to_restart:
             if (relay.url, relay.path) in relay_index:
                 self.server.relays_to_restart.append((timeout, relay))
 
@@ -144,7 +146,7 @@ class ServerConfiguration(object):
         self.configure_relays()
         self.configure_limits()
 
-    def configure_relays(self):
+    def configure_relays(self) -> None:
         conf = self.config_dict
         server = self.server
         global_burst_size = conf.get('burst_size', None)
@@ -159,7 +161,7 @@ class ServerConfiguration(object):
             (relay.url, relay.path, relay.addr_info),
             relay,
         ) for relay in itertools.chain(
-            self.server.relays.itervalues(),
+            iter(self.server.relays.values()),
             (relay for timeout, relay in self.server.relays_to_restart),
         ))
 
@@ -173,7 +175,7 @@ class ServerConfiguration(object):
             mount_keep_alive = mount_conf.get('keepalive', global_keepalive)
             path = mount_conf['path']
             for source_url in mount_conf['source_urls']:
-                parsed_url = urlparse.urlparse(source_url)
+                parsed_url = urllib.parse.urlparse(source_url)
                 if parsed_url.scheme in ('udp', 'multicast'):
                     if (source_url, path, None) not in relay_index:
                         server.logger.info('Trying to relay %s', source_url)
@@ -203,7 +205,7 @@ class ServerConfiguration(object):
                                              on_demand=mount_on_demand,
                                              keepalive=mount_keep_alive)
 
-    def configure_authorization(self):
+    def configure_authorization(self) -> None:
         conf = self.config_dict
         server = self.server
         for auth_handler in conf.get('auth', []):
@@ -215,10 +217,10 @@ class ServerConfiguration(object):
             handler_instance = handler_class(server, conf, **auth_handler)
             server.add_auth_handler(handler_instance)
 
-    def configure_status(self):
+    def configure_status(self) -> None:
         conf = self.config_dict
         server = self.server
-        for handler_path, status_handler in conf.get('status', {}).items():
+        for handler_path, status_handler in list(conf.get('status', {}).items()):
             handler_name = status_handler['handler']
             handler_module, handler_class = handler_name.rsplit('.', 1)
             self.modules_loaded.add(handler_module)
@@ -227,7 +229,7 @@ class ServerConfiguration(object):
             handler_instance = handler_class(server, conf, **status_handler)
             server.add_status_handler(handler_path, handler_instance)
 
-    def configure_stats(self):
+    def configure_stats(self) -> None:
         conf = self.config_dict
         server = self.server
         for stat_handler in conf.get('statistics', {}):
@@ -239,10 +241,10 @@ class ServerConfiguration(object):
             handler_instance = handler_class(server, **stat_handler)
             self.server.add_stats_handler(handler_instance)
 
-    def configure_limits(self):
+    def configure_limits(self) -> None:
         # set limits for maximum simultaneous clients
         try:
-            self.server.clients_limit = int(self.config_dict.get('clients_limit'))
+            self.server.clients_limit = int(self.config_dict.get('clients_limit'))  # type: ignore[arg-type]
             self.server.logger.info('Set client limit to %d', self.server.clients_limit)
         except (ValueError, TypeError):
             self.server.clients_limit = None

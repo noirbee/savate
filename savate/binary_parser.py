@@ -1,6 +1,7 @@
-# -*- coding: utf-8 -*-
-
 import struct
+from enum import Enum
+from io import BufferedIOBase
+from typing import Any, Callable, ClassVar, Literal, Optional, TypeVar, Union
 
 
 class BinaryParserError(Exception):
@@ -11,24 +12,35 @@ class BinaryParserEOFError(BinaryParserError):
     pass
 
 
-class BinaryParser(object):
-
+class _Invalid(Enum):
     INVALID = object()
 
-    def __init__(self, file_object = None):
-        self.file_object = file_object
+
+class BinaryParser:
+
+    INVALID = _Invalid.INVALID
+
+    parse_fields: ClassVar[tuple[tuple[str, str, Union[bytes, int, Callable[..., Any]]], ...]]
+    unpacker: ClassVar[struct.Struct]
+    object_size: ClassVar[int]
+
+    def __init_subclass__(cls) -> None:
         # We build our unpacker using the format strings in the
         # second field of self.parse_fields' elements
-        self.unpacker = struct.Struct('>' + ''.join(elt[1] for elt in self.parse_fields))
+        cls.unpacker = struct.Struct('>' + ''.join(elt[1] for elt in cls.parse_fields))
         # Let's compute the size of the object we're about to parse
-        self.object_size = self.unpacker.size
+        cls.object_size = cls.unpacker.size
 
-    def parse(self, data = None):
+    def __init__(self, file_object: Optional[BufferedIOBase] = None) -> None:
+        self.file_object = file_object
+        self.raw_data = b''
+
+    def parse(self, data: Optional[bytes] = None) -> int:
         if data is not None:
             self.raw_data = data[:self.object_size]
-        else:
+        elif self.file_object:
             self.raw_data = self.file_object.read(self.object_size)
-        if self.raw_data == '':
+        if self.raw_data == b'':
             raise BinaryParserEOFError('End of file reached')
         if len(self.raw_data) != self.object_size:
             raise BinaryParserError('Not enough data to parse object')
@@ -36,14 +48,9 @@ class BinaryParser(object):
         self.validate()
         return self.object_size
 
-    def validate(self):
+    def validate(self) -> None:
         for index, field_desc in enumerate(self.parse_fields):
-            field, _unpack_str = field_desc[:2]
-            if len(field_desc) < 3:
-                # No validating object provided, skip it
-                validating_object = lambda _, x: x
-            else:
-                validating_object = field_desc[2]
+            field, _, validating_object = field_desc
             field_value = self.fields[index]
             if callable(validating_object):
                 # We have to pass self as first argument since
@@ -59,21 +66,14 @@ class BinaryParser(object):
                                             (field, str(validating_object), str(field_value)))
             setattr(self, field, field_value)
 
-    # Some helpers
-    BIG_ENDIAN = object()
-    LITTLE_ENDIAN = object()
-
-    @classmethod
-    def object_size(cls):
-        return struct.calcsize('>' + ''.join(elt[1] for elt in cls.parse_fields))
-
     @staticmethod
-    def str_to_long(string, endianness = BIG_ENDIAN):
-        if endianness == BinaryParser.BIG_ENDIAN:
-            string = reversed(string)
+    def str_to_long(string: bytes) -> int:
+        """
+        Parse big-endian bytes into an int.
+        """
         counter = 0
         result = 0
-        for character in string:
-            result += ord(character) << counter * 8
+        for character in reversed(string):
+            result += character << counter * 8
             counter += 1
         return result

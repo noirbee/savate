@@ -1,10 +1,15 @@
-# -*- coding: utf-8 -*-
-
 import collections
 import itertools
+import socket
+from typing import TYPE_CHECKING, Optional, Sequence
+
+from cyhttp11 import HTTPParser
 
 from savate.sources import StreamSource
 from savate.flv import FLVHeader, FLVTag, FLVAudioData, FLVVideoData
+if TYPE_CHECKING:
+    from savate.clients import StreamClient
+    from savate.server import TCPServer
 
 
 class FLVSource(StreamSource):
@@ -12,31 +17,31 @@ class FLVSource(StreamSource):
     # Initial burst duration, in milliseconds
     BURST_DURATION = 5 * 1000
 
-    def __init__(self, sock, server, address, content_type, request_parser,
-                 path = None, burst_size = None, on_demand = False,
-                 keepalive = False):
-        StreamSource.__init__(self, sock, server, address, content_type,
+    def __init__(self, server: "TCPServer", sock: socket.socket, address: tuple[str, int], content_type: str,
+                 request_parser: HTTPParser, path: Optional[str] = None, burst_size: Optional[int] = None,
+                 on_demand: bool = False, keepalive: Optional[int] = None) -> None:
+        super().__init__(server, sock, address, content_type,
                               request_parser, path, burst_size, on_demand,
                               keepalive)
         # Initial buffer data
         self.buffer_data = request_parser.body
         # The FLV stream header
-        self.stream_header = None
+        self.stream_header: Optional[FLVHeader] = None
         # These are the initial setup tags we send out to each new
         # client
-        self.initial_tags = collections.deque()
+        self.initial_tags: collections.deque[FLVTag] = collections.deque()
         # Which type of initial tag we already got
         self.got_initial_meta = self.got_initial_audio = self.got_initial_video = False
         # Our current packets group
-        self.packets_group = collections.deque()
+        self.packets_group: collections.deque[FLVTag] = collections.deque()
         # Our current "burst" packets groups list
-        self.burst_groups = collections.deque()
+        self.burst_groups: collections.deque[Sequence[FLVTag]] = collections.deque()
         # List of buffers for the "burst" packets
-        self.burst_groups_data = collections.deque()
+        self.burst_groups_data: collections.deque[bytes] = collections.deque()
         # At startup we want to parse the stream header
         self.handle_data = self.handle_header
 
-    def on_demand_deactivate(self):
+    def on_demand_deactivate(self) -> None:
         StreamSource.on_demand_deactivate(self)
         self.stream_header = None
         self.got_initial_meta = self.got_initial_audio = self.got_initial_video = False
@@ -47,12 +52,12 @@ class FLVSource(StreamSource):
         self.handle_data = self.handle_header
         self.buffer_data = b''
 
-    def on_demand_connected(self, sock, request_parser):
+    def on_demand_connected(self, sock: socket.socket, request_parser: HTTPParser) -> None:
         self.buffer_data = request_parser.body
-        StreamSource.on_demand_connected(self, sock, request_parser)
+        super().on_demand_connected(sock, request_parser)
 
-    def new_client(self, client):
-        StreamSource.new_client(self, client)
+    def new_client(self, client: "StreamClient") -> None:
+        super().new_client(client)
         if self.stream_header:
             client.add_packet(self.stream_header.raw_data)
         for tag in self.initial_tags:
@@ -60,13 +65,13 @@ class FLVSource(StreamSource):
         for group_data in self.burst_groups_data:
             client.add_packet(group_data)
 
-    def handle_packet(self, packet):
+    def handle_packet(self, packet: bytes) -> None:
         self.buffer_data = self.buffer_data + packet
         while self.handle_data():
             pass
 
-    def handle_header(self):
-        if len(self.buffer_data) >= FLVHeader.object_size():
+    def handle_header(self) -> bool:
+        if len(self.buffer_data) >= FLVHeader.object_size:
             # We can try and parse the stream header
             self.stream_header = FLVHeader()
             nb_parsed = self.stream_header.parse(self.buffer_data)
@@ -77,8 +82,8 @@ class FLVSource(StreamSource):
         else:
             return False
 
-    def handle_tag(self):
-        if len(self.buffer_data) >= FLVTag.object_size():
+    def handle_tag(self) -> bool:
+        if len(self.buffer_data) >= FLVTag.object_size:
             # We can try and parse one FLV tag
             self.current_tag = FLVTag()
             nb_parsed = self.current_tag.parse(self.buffer_data)
@@ -88,7 +93,7 @@ class FLVSource(StreamSource):
         else:
             return False
 
-    def handle_tag_body(self):
+    def handle_tag_body(self) -> bool:
         body_length = (self.current_tag.data_size +
                        self.current_tag.TRAILER_SIZE)
         if len(self.buffer_data) >= body_length:
@@ -108,7 +113,7 @@ class FLVSource(StreamSource):
         else:
             return False
 
-    def check_for_initial_tag(self, flv_tag):
+    def check_for_initial_tag(self, flv_tag: FLVTag) -> bool:
         if (not self.got_initial_meta and flv_tag.tag_type == 'meta'):
             self.got_initial_meta = True
             self.initial_tags.append(flv_tag)
@@ -133,7 +138,7 @@ class FLVSource(StreamSource):
                 return True
         return False
 
-    def add_to_packets_group(self, flv_tag):
+    def add_to_packets_group(self, flv_tag: FLVTag) -> None:
         if self.is_sync_point(flv_tag):
             # Current packets group is over, publish all of its
             # packets. It seems buffering is needed to avoid a
@@ -146,7 +151,7 @@ class FLVSource(StreamSource):
             self.packets_group = collections.deque()
         self.packets_group.append(flv_tag)
 
-    def add_to_burst_groups(self, group):
+    def add_to_burst_groups(self, group: Sequence[FLVTag]) -> None:
         while ((len(self.burst_groups) >= 2) and
                ((group[0].timestamp -
                  self.burst_groups[1][0].timestamp) > self.BURST_DURATION)):
@@ -158,8 +163,8 @@ class FLVSource(StreamSource):
         self.burst_groups_data.append(b''.join(
                 itertools.chain.from_iterable((tag.raw_data, tag.body) for tag in group)))
 
-    def is_sync_point(self, flv_tag):
-        if self.stream_header.video:
+    def is_sync_point(self, flv_tag: FLVTag) -> bool:
+        if self.stream_header and self.stream_header.video:
             # If our stream has video, we need to sync on keyframes
             if (flv_tag.tag_type == 'video'):
                 video_data = FLVVideoData()

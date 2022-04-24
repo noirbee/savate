@@ -1,7 +1,5 @@
-# -*- coding: utf-8 -*-
-
-from audio_parser cimport AbstractAudioParser
-from audio_parser import FrameParsingError
+from savate.audio_parser cimport AbstractAudioParser
+from savate.audio_parser import FrameParsingError
 from struct import Struct
 
 
@@ -116,9 +114,9 @@ cdef class MP3Parser(AbstractAudioParser):
         # 2 bits, emphasis
 
         if c_layer == LAYER_I:
-            self.frame_length = (12 * c_bitrate / c_frequency + c_padding) << 4
+            self.frame_length = (12 * c_bitrate // c_frequency + c_padding) << 4
         else:
             # Layer II or III
-            self.frame_length = 144 * c_bitrate / c_frequency + c_padding
+            self.frame_length = 144 * c_bitrate // c_frequency + c_padding
 
         return True

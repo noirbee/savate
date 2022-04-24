@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 '''
 Low-Level Linux Specific File Descriptors module.
 
@@ -9,7 +8,7 @@ import os
 import fcntl
 import struct
 
-cimport lllsfd
+from savate cimport lllsfd
 
 
 cdef extern from 'errno.h':
@@ -24,7 +23,7 @@ TFD_CLOEXEC = lllsfd._TFD_CLOEXEC
 TFD_TIMER_ABSTIME = lllsfd._TFD_TIMER_ABSTIME
 
 
-class TimerFD(object):
+class TimerFD:
     '''
     A low-level interface to Linux' timerfd. Read the
     timerfd_create(2) manual page for a proper description of the

@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 cdef extern from 'sys/uio.h':
 
         struct iovec:

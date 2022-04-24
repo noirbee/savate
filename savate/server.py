@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 import socket
 from datetime import datetime
 import logging
@@ -8,8 +6,10 @@ import random
 import re
 import itertools
 import errno
-import urlparse
+import urllib.parse
 import json
+import types
+from typing import Iterable, Optional, Type, TypedDict
 
 import cyhttp11
 
@@ -22,35 +22,37 @@ from savate import clients
 from savate import sources
 from savate import relay
 from savate import timeouts
+from savate import stats, status
+from savate.auth import AbstractAuthorization
 
 
 class HTTPRequest(looping.BaseIOEventHandler):
 
     REQUEST_MAX_SIZE = 4096
 
-    def __init__(self, server, sock, address):
+    def __init__(self, server: "TCPServer", sock: socket.socket, address: tuple[str, int]) -> None:
         self.server = server
         self.sock = sock
-        self.sock.setblocking(0)
+        self.sock.setblocking(False)
         self.address = address
         self.request_size = 0
         self.request_buffer = b''
         self.request_parser = cyhttp11.HTTPParser()
 
-    def close(self):
+    def close(self) -> None:
         self.server.remove_inactivity_timeout(self)
         self.server.loop.unregister(self)
         looping.BaseIOEventHandler.close(self)
 
-    def handle_event(self, eventmask):
+    def handle_event(self, eventmask: int) -> None:
         if eventmask & looping.POLLIN:
             self.handle_read()
 
-    def handle_read(self):
+    def handle_read(self) -> None:
         while True:
             tmp_buffer = helpers.handle_eagain(self.sock.recv,
                                                self.REQUEST_MAX_SIZE - self.request_size)
-            if tmp_buffer == None:
+            if tmp_buffer is None:
                 # EAGAIN, we'll come back later
                 break
             elif tmp_buffer == b'':
@@ -70,12 +72,12 @@ class HTTPRequest(looping.BaseIOEventHandler):
                 raise HTTPParseError('Oversized HTTP request from %s, %s' %
                                      (self.sock, self.address))
 
-    def transform_request(self):
+    def transform_request(self) -> None:
         loop = self.server.loop
         # FIXME: should we shutdown() read or write depending on what
         # we do here ? (i.e. SHUT_RD for GETs, SHUT_WD for sources)
 
-        self.server.logger.debug('%s:%s %s %s %s, request headers: %s',
+        self.server.logger.info('%s:%s %s %s %s, request headers: %s',
                                 self.address[0], self.address[1],
                                 self.request_parser.request_method,
                                 self.request_parser.request_path,
@@ -83,7 +85,7 @@ class HTTPRequest(looping.BaseIOEventHandler):
                                 self.request_parser.headers)
 
         # Squash any consecutive / into one
-        self.request_parser.request_path = re.sub('//+', '/',
+        self.request_parser.request_path = re.sub(b'//+', b'/',
                                                   self.request_parser.request_path)
 
         self.server.request_in(self.request_parser, self.sock)
@@ -109,7 +111,7 @@ class HTTPRequest(looping.BaseIOEventHandler):
                               looping.POLLOUT)
                 return
 
-        path = self.request_parser.request_path
+        path = self.request_parser.request_path.decode("ascii")
 
         response = None
 
@@ -135,10 +137,10 @@ class HTTPRequest(looping.BaseIOEventHandler):
                     # Used by some clients to know the stream type
                     # before attempting playout
                     if self.request_parser.request_method in [b'HEAD']:
-                        source = self.server.sources[path].keys()[0]
-                        response = HTTPResponse(200, b'OK', {b'Content-Type': source.content_type,
-                                                             b'Content-Length': None,
-                                                             b'Connection': b'close'})
+                        source = list(self.server.sources[path].keys())[0]
+                        response = HTTPResponse(200, b'OK', {b'Content-Type': bytes(source.content_type, "ascii"),
+                                                            b'Content-Length': None,
+                                                            b'Connection': b'close'})
                     # Check for server clients limit
                     elif self.server.clients_limit is not None and (
                         self.server.clients_limit == self.server.clients_connected):
@@ -146,7 +148,7 @@ class HTTPRequest(looping.BaseIOEventHandler):
                                                 b' Too many clients.')
                     else:
                         # FIXME: proper source selection
-                        source = random.choice(self.server.sources[path].keys())
+                        source = random.choice(list(self.server.sources[path].keys()))
                         new_client = clients.find_client(self.server,
                                                          source,
                                                          self.sock,
@@ -182,6 +184,10 @@ class InactivityTimeout(Exception):
     pass
 
 
+_SourceDict = TypedDict("_SourceDict", {"source": sources.StreamSource,
+                                        "clients": dict[int, clients.StreamClient]})
+
+
 class TCPServer(looping.BaseIOEventHandler):
 
     BACKLOG = 1000
@@ -197,38 +203,42 @@ class TCPServer(looping.BaseIOEventHandler):
     STATE_STOPPED = 'STOPPED'
     STATE_SHUTTING_DOWN = 'SHUTTING_DOWN'
 
-    def __init__(self, address, config_file, logger = None):
+    timeouts: timeouts.Timeouts
+
+    def __init__(self, address: tuple[str, int], config_file: str, logger: Optional[logging.Logger] = None) -> None:
         self.address = address
         self.config_file = config_file
         with open(self.config_file) as conf_file:
             self.config = configuration.ServerConfiguration(self, json.load(conf_file))
         self.logger = logger or logging.getLogger('savate')
-        self.keepalived = collections.defaultdict(list)
-        self.sources = {}
-        self.relays = {}
-        self.relays_to_restart = collections.deque()
-        self.auth_handlers = []
-        self.status_handlers = {}
-        self.statistics_handlers = []
+        self.keepalived: dict[bytes, list[clients.StreamClient]] = collections.defaultdict(list)
+        self.sources: dict[str, dict[sources.StreamSource, _SourceDict]] = {}
+        self.relays: dict[socket.socket, relay.Relay] = {}
+        self.relays_to_restart: collections.deque[tuple[float, relay.Relay]] = collections.deque()
+        self.auth_handlers: list[AbstractAuthorization] = []
+        self.status_handlers: dict[str, status.BaseStatusClient] = {}
+        self.statistics_handlers: list[stats.StatsHandler] = []
         self.state = self.STATE_RUNNING
         self.reloading = False
-        self.timeouts = None
-        self.io_timeouts = None
+        self.timeouts: timeouts.Timeouts = None
+        self.io_timeouts: timeouts.IOTimeout = None
         # keep a counter for limit on *streaming* clients
         self.clients_connected = 0
+        # max number of clients
+        self.clients_limit: Optional[int] = None
 
-    def create_loop(self):
+    def create_loop(self) -> None:
         self.loop = looping.IOLoop(self.logger)
         self.loop.register(self, looping.POLLIN)
         # Our timeout handler
         self.loop.register(self.timeouts, looping.POLLIN)
 
-    def create_socket(self):
+    def create_socket(self) -> None:
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.sock.bind(self.address)
         self.sock.listen(self.BACKLOG)
-        self.sock.setblocking(0)
+        self.sock.setblocking(False)
 
         # The Timeouts object uses a file descriptor, so we must
         # initialise here to avoid having it closed by daemonisation
@@ -236,7 +246,7 @@ class TCPServer(looping.BaseIOEventHandler):
             self.timeouts = timeouts.Timeouts(self)
             self.io_timeouts = timeouts.IOTimeout(self.timeouts)
 
-    def handle_event(self, eventmask):
+    def handle_event(self, eventmask: int) -> None:
         if eventmask & looping.POLLIN:
             try:
                 helpers.loop_for_eagain(self.handle_new_incoming)
@@ -252,16 +262,16 @@ class TCPServer(looping.BaseIOEventHandler):
                 else:
                     raise
 
-    def reset_inactivity_timeout(self, handler):
+    def reset_inactivity_timeout(self, handler: looping.BaseIOEventHandler) -> None:
         self.io_timeouts.reset_timeout(
             handler,
             int(self.loop.now()) + self.INACTIVITY_TIMEOUT,
         )
 
-    def remove_inactivity_timeout(self, handler):
+    def remove_inactivity_timeout(self, handler: looping.BaseIOEventHandler) -> None:
         self.io_timeouts.remove_timeout(handler)
 
-    def handle_new_incoming(self):
+    def handle_new_incoming(self) -> None:
         client_socket, client_address = self.sock.accept()
         self.logger.info('New client <fd:%d, id:0x%s>, %s',
                          client_socket.fileno(), id(client_socket), client_address)
@@ -270,22 +280,23 @@ class TCPServer(looping.BaseIOEventHandler):
 
         self.loop.register(new_handler, looping.POLLIN)
 
-    def configure(self):
+    def configure(self) -> None:
         self.config.configure()
 
-    def request_in(self, request_parser, sock):
+    def request_in(self, request_parser: cyhttp11.HTTPParser, sock: socket.socket) -> None:
         for stat in self.statistics_handlers:
             stat.request_in(request_parser, sock)
 
-    def request_out(self, request_parser, sock, address, size=0, duration=0,
-                    status_code=200):
+    def request_out(self, request_parser: cyhttp11.HTTPParser, sock: socket.socket, address: tuple[str, int], size: int = 0, duration: float = 0,
+                    status_code: int = 200) -> None:
         for stat in self.statistics_handlers:
             stat.request_out(request_parser, sock, address, size, duration,
                              status_code)
 
-    def add_relay(self, url, path, address_info = None, burst_size = None,
-                  on_demand = False, keepalive = False):
-        if urlparse.urlparse(url).scheme in ('udp', 'multicast'):
+    def add_relay(self, url: str, path: str, address_info: Optional[helpers.AddrInfo] = None, burst_size: Optional[int] = None,
+                  on_demand: bool = False, keepalive: Optional[int] = None) -> None:
+        tmp_relay: relay.Relay
+        if urllib.parse.urlparse(url).scheme in ('udp', 'multicast'):
             tmp_relay = relay.UDPRelay(self, url, path, address_info,
                                        burst_size)
         else:
@@ -293,23 +304,23 @@ class TCPServer(looping.BaseIOEventHandler):
                                         burst_size, on_demand, keepalive)
         self.relays[tmp_relay.sock] = tmp_relay
 
-    def add_auth_handler(self, handler):
+    def add_auth_handler(self, handler: AbstractAuthorization) -> None:
         self.auth_handlers.append(handler)
 
-    def add_status_handler(self, path, handler):
+    def add_status_handler(self, path: str, handler: status.BaseStatusClient) -> None:
         self.status_handlers[path] = handler
 
-    def add_stats_handler(self, handler):
+    def add_stats_handler(self, handler: stats.StatsHandler) -> None:
         self.statistics_handlers.append(handler)
 
-    def add_source(self, path, sock, address, request_parser,
-                   burst_size = None):
+    def add_source(self, path: str, sock: socket.socket, address: tuple[str, int], request_parser: cyhttp11.HTTPParser,
+                   burst_size: Optional[int] = None) -> None:
 
         source = sources.find_source(self, sock, address, request_parser, path,
                                      burst_size)
         self.register_source(source)
 
-    def register_source(self, source):
+    def register_source(self, source: sources.StreamSource) -> None:
         self.logger.info('New source (%s) for %s: %s',
                          source.__class__.__name__, source.path, source.address)
         self.sources.setdefault(source.path, {})[source] = {'source': source,
@@ -330,10 +341,10 @@ class TCPServer(looping.BaseIOEventHandler):
 
             del self.keepalived[source.path]
 
-    def update_activity(self, handler):
+    def update_activity(self, handler: looping.BaseIOEventHandler) -> None:
         self.reset_inactivity_timeout(handler)
 
-    def check_for_relay_restart(self, handler):
+    def check_for_relay_restart(self, handler: looping.BaseIOEventHandler) -> None:
         # If this is one of our relays, mark it for restart
         if handler.sock in self.relays:
             # It will be restarted in one second from now
@@ -341,7 +352,7 @@ class TCPServer(looping.BaseIOEventHandler):
             self.relays_to_restart.append((self.loop.now() + self.RESTART_DELAY,
                                            self.relays.pop(handler.sock)))
 
-    def remove_source(self, source):
+    def remove_source(self, source: sources.StreamSource) -> None:
         # De-activate the timeout handling for this source
         self.remove_inactivity_timeout(source)
         # Remove on demand closing timeout
@@ -355,8 +366,8 @@ class TCPServer(looping.BaseIOEventHandler):
             # migrate the clients to it
             tmp_source = self.sources[source.path].pop(source)
             # Simple even distribution amongst the remaining sources
-            for client, new_source in itertools.izip(tmp_source['clients'].itervalues(),
-                                                     itertools.cycle(self.sources[source.path].keys())):
+            for client, new_source in zip(iter(tmp_source['clients'].values()),
+                                                     itertools.cycle(list(self.sources[source.path].keys()))):
                 client.source = new_source
                 self.sources[source.path][new_source]['clients'][client.fileno()] = client
                 # if source is on demand and not running, then start it
@@ -365,7 +376,7 @@ class TCPServer(looping.BaseIOEventHandler):
             for client in self.sources[source.path][source]['clients'].values():
                 if keepalive:
                     # try to keep the clients
-                    client.source = None
+                    client.source = None  # type: ignore[assignment]
                     # we don't clear client buffer because player can't
                     # resynchronise on the stream, this result in a mix of old
                     # frames and new ones when the source reconnects which can
@@ -375,7 +386,7 @@ class TCPServer(looping.BaseIOEventHandler):
                     client.close()
             if keepalive:
                 # timeout n seconds
-                def my_closure():
+                def my_closure() -> None:
                     # close clients
                     self.logger.error('Keepalive client trashed')
                     for client in self.keepalived[source.path]:
@@ -393,12 +404,12 @@ class TCPServer(looping.BaseIOEventHandler):
         self.loop.unregister(source)
         self.check_for_relay_restart(source)
 
-    def remove_client(self, client):
+    def remove_client(self, client: clients.StreamClient) -> None:
         self.clients_connected -= 1
         source = client.source
         self.loop.unregister(client)
         if source is None:
-            return
+            return None
 
         del self.sources[source.path][source]['clients'][client.fileno()]
         # FIXME: what to do with this one ?
@@ -408,18 +419,18 @@ class TCPServer(looping.BaseIOEventHandler):
             client.address,
         )
 
-    def all_clients(self):
-        return itertools.chain.from_iterable(source_dict['clients'].itervalues()
-                                             for source in self.sources.itervalues()
-                                             for source_dict in source.itervalues()
+    def all_clients(self) -> Iterable[clients.StreamClient]:
+        return itertools.chain.from_iterable(source_dict['clients'].values()
+                                             for source in self.sources.values()
+                                             for source_dict in source.values()
                                              )
 
-    def publish_packet(self, source, packet):
-        packet = buffer_event.make_buffer(packet)
-        for client in self.sources[source.path][source]['clients'].itervalues():
+    def publish_packet(self, source: sources.StreamSource, packet: bytes) -> None:
+        packet = memoryview(packet)
+        for client in self.sources[source.path][source]['clients'].values():
             client.add_packet(packet)
 
-    def serve_forever(self):
+    def serve_forever(self) -> None:
         while (self.state == self.STATE_RUNNING or
                (self.state == self.STATE_SHUTTING_DOWN and any(self.all_clients()))):
             self.loop.once(self.LOOP_TIMEOUT)
@@ -445,15 +456,15 @@ class TCPServer(looping.BaseIOEventHandler):
         # the server instance itself
         self.logger.info('Shutting down')
 
-    def stop(self, signum, _frame):
+    def stop(self, signum: int, _frame: Optional[types.FrameType]) -> None:
         self.logger.info('Received signal %s, stopping main loop', find_signal_str(signum))
         self.state = self.STATE_STOPPED
 
-    def reload(self, signum, _frame):
+    def reload(self, signum: int, _frame: Optional[types.FrameType]) -> None:
         self.logger.info('Received signal %s, reloading configuration', find_signal_str(signum))
         self.reloading = True
 
-    def graceful_stop(self, signum, _frame):
+    def graceful_stop(self, signum: int, _frame: Optional[types.FrameType]) -> None:
         self.logger.info('Received signal %s, performing graceful stop', find_signal_str(signum))
         # Close our accept() socket
         self.loop.unregister(self)

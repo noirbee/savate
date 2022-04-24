@@ -62,17 +62,17 @@ adts_la_LDFLAGS = ${PYTHON_LDFLAGS} -avoid-version -module
 adts_la_SOURCES = adts.c
 
 BUILT_SOURCES = lllsfd.c recvmmsg.c audio_parser.c
-EXTRA_DIST = lllsfd.pyx lllsfd.pxd recvmmsg.pyx recvmmsg.pxd audio_parser.pyx audio_parser.pxd mp3.pyx adts.pyx ${BUILT_SOURCES}
+EXTRA_DIST = lllsfd.pyx lllsfd.pxd recvmmsg.pyx recvmmsg.pxd recvmmsg.pyi audio_parser.pyx audio_parser.pxd audio_parser.pyi mp3.pyx mp3.pyi adts.pyx adts.pyi ${BUILT_SOURCES}
 
 MAINTAINERCLEANFILES = mp3.c adts.c ${BUILT_SOURCES}
 
 mp3.c: Makefile.in mp3.pyx
-	cython --verbose $(srcdir)/$*.pyx -o $@
+	cython -3 --verbose $(srcdir)/$*.pyx -o $@
 
 adts.c: Makefile.in adts.pyx
-	cython --verbose $(srcdir)/$*.pyx -o $@
+	cython -3 --verbose $(srcdir)/$*.pyx -o $@
 
 # A kinda clever rule used to avoid writing each Cython compilation
 # rule by hand
 $(BUILT_SOURCES): %.c: Makefile.in %.pyx %.pxd
-	cython --verbose $(srcdir)/$*.pyx -o $@
+	cython -3 --verbose $(srcdir)/$*.pyx -o $@

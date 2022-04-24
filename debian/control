@@ -5,7 +5,7 @@ Maintainer: Nicolas Noirbent <nicolas@noirbent.fr>
 Uploaders: Nicolas Noirbent <nicolas.noirbent@smartjog.com>, Laurent Defert <laurent.defert@smartjog.com>
 Build-Depends: cdbs (>= 0.4.89), debhelper (>= 7), python-support (>= 0.8), python-all-dev
 Standards-Version: 3.9.2
-XS-Python-Version: >= 2.6
+XS-Python-Version: >= 3.9
 
 Package: savate
 Architecture: any

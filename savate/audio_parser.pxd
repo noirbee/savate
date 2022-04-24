@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 cdef class AbstractAudioParser:
     cdef int parsing_state
     cdef int frame_length

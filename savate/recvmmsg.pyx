@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 from cpython.mem cimport PyMem_Malloc, PyMem_Free
 from cpython.buffer cimport PyObject_GetBuffer, PyBuffer_Release, PyBUF_WRITABLE
 from libc.string cimport memset
@@ -10,7 +8,7 @@ cdef extern from 'errno.h':
 
 import os
 
-from recvmmsg cimport recvmmsg as _recvmmsg
+from savate.recvmmsg cimport recvmmsg as _recvmmsg
 
 
 def recvmmsg(int fd, object buffers, int flags = 0):

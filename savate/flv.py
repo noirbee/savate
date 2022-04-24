@@ -1,6 +1,6 @@
-# -*- coding: utf-8 -*-
+from typing import Optional, Union
 
-from savate.binary_parser import BinaryParser
+from savate.binary_parser import BinaryParser, _Invalid
 
 
 class FLVHeader(BinaryParser):
@@ -8,13 +8,13 @@ class FLVHeader(BinaryParser):
     AUDIO_PRESENT = 4
     VIDEO_PRESENT = 1
 
-    def flv_header_flags(self, field_value):
+    def flv_header_flags(self, field_value: int) -> int:
         self.audio = (field_value & self.AUDIO_PRESENT) == self.AUDIO_PRESENT
         self.video = (field_value & self.VIDEO_PRESENT) == self.VIDEO_PRESENT
         return field_value
 
     parse_fields = (
-        ('signature', '3s', 'FLV'),
+        ('signature', '3s', b'FLV'),
         ('version', 'B', 1),
         ('flags', 'B', flv_header_flags),
         ('data_offset', 'I', 9),
@@ -36,27 +36,32 @@ class FLVTag(BinaryParser):
 
     TRAILER_SIZE = 4
 
-    def flv_tag_type(self, field_value):
-        if field_value not in self.tag_types.keys():
+    body: bytes
+    timestamp: int
+    data_size: int
+
+    def flv_tag_type(self, field_value: int) -> Union[int, _Invalid]:
+        if field_value not in self.tag_types:
             return BinaryParser.INVALID
         self.tag_type = self.tag_types[field_value]
         return field_value
 
-    def flv_data_size(self, field_value):
-        return BinaryParser.str_to_long(field_value)
+    def flv_data_size(self, field_value: bytes) -> int:
+        self.data_size = BinaryParser.str_to_long(field_value)
+        return self.data_size
 
-    def flv_tag_timestamp(self, field_value):
-        timestamp_extended = ord(field_value[3]) << 24
+    def flv_tag_timestamp(self, field_value: bytes) -> int:
+        timestamp_extended = field_value[3] << 24
         return BinaryParser.str_to_long(field_value[:3]) + timestamp_extended
 
     parse_fields = (
         ('tag_type_id', 'B', flv_tag_type),
         ('data_size', '3s', flv_data_size),
         ('timestamp', '4s', flv_tag_timestamp),
-        ('stream_id', '3s', '\x00' * 3),
+        ('stream_id', '3s', b'\x00' * 3),
         )
 
-    def __str__(self):
+    def __str__(self) -> str:
         return '<FLVTag type %s, time %d, size %d>' % (self.tag_type, self.timestamp, self.data_size)
 
 
@@ -98,16 +103,19 @@ class FLVVideoData(BinaryParser):
     AVC_NALU = 1
     AVC_SEQUENCE_END = 2
 
-    def video_tag_info(self, field_value):
+    avc_packet_type: int
+
+    def video_tag_info(self, field_value: int) -> Optional[_Invalid]:
         self.frame_type_id = field_value >> 4
-        if self.frame_type_id not in self.frame_types.keys():
+        if self.frame_type_id not in list(self.frame_types.keys()):
             return BinaryParser.INVALID
         self.frame_type = self.frame_types[self.frame_type_id]
 
         self.codec_id = field_value & 0x0f
-        if self.codec_id not in self.codecs.keys():
+        if self.codec_id not in list(self.codecs.keys()):
             return BinaryParser.INVALID
         self.codec = self.codecs[self.codec_id]
+        return None
 
     parse_fields = (
         ('frame_type_and_codec', 'B', video_tag_info),
@@ -152,11 +160,14 @@ class FLVAudioData(BinaryParser):
     AAC_SEQUENCE_HEADER = 0
     AAC_RAW = 1
 
-    def audio_data_info(self, field_value):
+    aac_packet_type: int
+
+    def audio_data_info(self, field_value: int) -> Optional[_Invalid]:
         self.sound_format_id = field_value >> 4
-        if self.sound_format_id not in self.sound_formats.keys():
+        if self.sound_format_id not in list(self.sound_formats.keys()):
             return BinaryParser.INVALID
         self.sound_format = self.sound_formats[self.sound_format_id]
+        return None
 
     parse_fields = (
         ('audio_data', 'B', audio_data_info),

@@ -1,7 +1,5 @@
-# -*- coding: utf-8 -*-
-
-from audio_parser cimport AbstractAudioParser
-from audio_parser import FrameParsingError
+from savate.audio_parser cimport AbstractAudioParser
+from savate.audio_parser import FrameParsingError
 
 
 cdef class ADTSParser(AbstractAudioParser):

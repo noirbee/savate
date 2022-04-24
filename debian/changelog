@@ -1,6 +1,7 @@
-savate (0.5.1~dev-1) unstable; urgency=low
+savate (0.6.0~dev-1) unstable; urgency=low
 
   * New upstream release.
+  * Switch to Python 3.9.
 
  -- Nicolas Noirbent <nicolas.noirbent@smartjog.com>  Mon, 29 Oct 2012 15:42:52 +0100
 

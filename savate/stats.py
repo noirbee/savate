@@ -1,20 +1,38 @@
-# -*- coding: utf-8 -*-
-
+from abc import ABC, abstractmethod
+import socket
 from datetime import datetime
+from typing import TYPE_CHECKING, Any, Optional
+
+from cyhttp11 import HTTPParser
+
+if TYPE_CHECKING:
+    from savate.server import TCPServer
+
+class StatsHandler(ABC):
+
+    def __init__(self, server: "TCPServer", **config: Any) -> None:
+        self.server = server
+        self.config = config
+
+    @abstractmethod
+    def request_in(self, request_parser: HTTPParser, sock: socket.socket) -> None:
+        ...
+
+    @abstractmethod
+    def request_out(self, request_parser: HTTPParser, sock: socket.socket, address: tuple[str, int], size: int = 0, connect_time: Optional[float] = None,
+                    status_code: int = 200) -> None:
+        ...
 
 
-class ApacheLogger(object):
+class ApacheLogger(StatsHandler):
     """Simple stat handler that just log requests in an Apache like format.
 
     """
-    def __init__(self, server, **config):
-        self.server = server
-
-    def request_in(self, request_parser, sock):
+    def request_in(self, request_parser: HTTPParser, sock: socket.socket) -> None:
         pass
 
-    def request_out(self, request_parser, sock, address, size=0, connect_time=None,
-                           status_code=200):
+    def request_out(self, request_parser: HTTPParser, sock: socket.socket, address: tuple[str, int], size: int = 0, connect_time: Optional[float] = None,
+                    status_code: int = 200) -> None:
         self.server.logger.info(
             '%s - %s [%s] "%s %s %s" %d %s "%s" "%s"',
             address[0],

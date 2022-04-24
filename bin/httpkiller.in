@@ -1,12 +1,11 @@
-#! /usr/bin/python
-# -*- coding: utf-8 -*-
+#! /usr/bin/python3
 
 import collections
 import errno
 import os
 import socket
 import time
-import urlparse
+import urllib.parse
 import uuid
 
 import cyhttp11
@@ -17,7 +16,7 @@ from savate import buffer_event
 from savate import looping
 
 
-class BandwidthCount(object):
+class BandwidthCount:
 
     def __init__(self, maxsize = 10**6):
         self.data_points = collections.deque(maxlen = maxsize)
@@ -61,7 +60,7 @@ class HTTPClient(looping.BaseIOEventHandler):
     def __init__(self, loop, url, addr_info = None, http_host = None):
         self.loop = loop
         self.url = url
-        self.parsed_url = urlparse.urlparse(url)
+        self.parsed_url = urllib.parse.urlparse(url)
         if addr_info:
             self.sock = socket.socket(addr_info[0], addr_info[1], addr_info[2])
             self.host_address = addr_info[4][0]
@@ -81,7 +80,6 @@ class HTTPClient(looping.BaseIOEventHandler):
                                       self.host_port))
         if error and error != errno.EINPROGRESS:
             raise socket.error(error, os.strerror(error))
-        self.handle_event = self.handle_connect
 
         self.body_length = 0
         self.content_length = 0
@@ -100,14 +98,16 @@ class HTTPClient(looping.BaseIOEventHandler):
             # Immediately try to send some data
             self.handle_event(eventmask)
 
+    handle_event = handle_connect
+
     def _build_request(self):
         # FIXME: URL encoding for the request path
         # FIXME: params, query and fragments are discarded
         request_line = b'%s %s %s' % (self.REQUEST_METHOD,
-                                      self.parsed_url.path or b'/',
+                                      bytes(self.parsed_url.path or '/', "ascii"),
                                       self.HTTP_VERSION)
         # FIXME: should we send some more headers ?
-        headers_lines = helpers.build_http_headers({b'Host': self.http_host,
+        headers_lines = helpers.build_http_headers({b'Host': bytes(self.http_host, "ascii"),
                                                     b'icy-metadata': b'1'}, b'')
         # FIXME: should we send a body ?
         return b'\r\n'.join([request_line, headers_lines, b''])
@@ -232,7 +232,7 @@ if __name__ == '__main__':
     try:
         targets = []
         for url in urls:
-            parsed_url = urlparse.urlparse(url)
+            parsed_url = urllib.parse.urlparse(url)
             addr_infos = socket.getaddrinfo(parsed_url.hostname,
                                            parsed_url.port,
                                            socket.AF_UNSPEC,
@@ -250,7 +250,7 @@ if __name__ == '__main__':
                 if time.time() - last_step > 1:
                     last_step = time.time()
                     if len(ioloop.handlers):
-                        processing_handlers_nb = len([handler for handler in ioloop.handlers.itervalues()
+                        processing_handlers_nb = len([handler for handler in ioloop.handlers.values()
                                                       if handler.handle_event != handler.handle_body])
                         tmp_clients_nb = options.rate - processing_handlers_nb
                     else:
