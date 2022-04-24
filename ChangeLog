@@ -1,7 +1,8 @@
-Version 0.5.1~dev
+Version 0.6.0 Released on 2022/04/24
 
 	* Added a savate(8) manpage.
 	* Added a savate.json(5) manpage.
+	* Switch to Python3.
 
 Version 0.5.0 Released on 2012/10/23
 
